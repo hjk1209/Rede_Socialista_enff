@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Infra | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<section class="panel-grid infra-dashboard">
+    <article class="surface-card infra-summary-sidebar">
+        <span class="eyebrow">Setor de infra</span>
+        <h1>Gestao integrada da escola</h1>
+        <p class="support-copy">TI, producao, jardinagem e manutencao no mesmo fluxo: solicitacao, dialogo, agendamento e calendario comum.</p>
+        <div class="stat-grid">
+            <div class="metric-card">
+                <strong>{{ open_request_total }}</strong>
+                <span>solicitacoes abertas</span>
+            </div>
+            <div class="metric-card">
+                <strong>{{ scheduled_request_total }}</strong>
+                <span>manutencoes agendadas</span>
+            </div>
+            <div class="metric-card">
+                <strong>{{ month_event_total }}</strong>
+                <span>atividades no calendario</span>
+            </div>
+            <div class="metric-card">
+                <strong>{{ managed_sectors|length }}</strong>
+                <span>setores sob sua gestao</span>
+            </div>
+        </div>
+    </article>
+
+    <article class="surface-card wide-card infra-tab-shell" data-tabs>
+        <div class="infra-tab-list" role="tablist" aria-label="Areas do setor de infra">
+            <button type="button" class="infra-tab-button is-active" data-tab-target="infra-tab-requests" role="tab" aria-selected="true" aria-controls="infra-tab-requests">
+                Solicitacoes
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="infra-tab-new" role="tab" aria-selected="false" aria-controls="infra-tab-new">
+                Nova demanda
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="infra-tab-calendar" role="tab" aria-selected="false" aria-controls="infra-tab-calendar">
+                Calendario comum
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="infra-tab-sectors" role="tab" aria-selected="false" aria-controls="infra-tab-sectors">
+                Setores
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="infra-tab-notifications" role="tab" aria-selected="false" aria-controls="infra-tab-notifications">
+                Notificacoes
+            </button>
+        </div>
+
+        <section id="infra-tab-requests" class="infra-tab-panel is-active" role="tabpanel">
+            <span class="eyebrow">{% if is_infra_operator %}Fila de trabalho{% else %}Minhas solicitacoes{% endif %}</span>
+            <h2>Solicitacoes e dialogo</h2>
+            <div class="infra-request-list">
+                {% for card in request_cards %}
+                    {% with item=card.instance %}
+                        <div class="report-card infra-ticket-card">
+                            <div class="directory-head">
+                                <div>
+                                    <strong>{{ item.title }}</strong>
+                                    <span>{{ item.get_sector_display }} - {{ item.location }}{% if item.asset_identifier %} - {{ item.asset_identifier }}{% endif %}</span>
+                                </div>
+                                <span class="status-pill {% if item.status == 'concluida' %}status-active{% elif item.status == 'cancelada' %}status-inactive{% else %}status-warning{% endif %}">
+                                    {{ item.get_status_display }}
+                                </span>
+                            </div>
+                            <p>{{ item.description }}</p>
+                            <p class="support-copy">
+                                Aberta por {{ item.requester.display_name }} em {{ item.created_at|date:"d/m/Y H:i" }}.
+                                {% if item.scheduled_for %} Agendada para {{ item.scheduled_for|date:"d/m/Y H:i" }}.{% endif %}
+                            </p>
+
+                            <div class="infra-dialog">
+                                {% for update in item.updates.all %}
+                                    <div class="comment-row">
+                                        <strong>{% if update.author %}{{ update.author.display_name }}{% else %}Sistema{% endif %}</strong>
+                                        <span>{{ update.body }}</span>
+                                        <small class="support-copy">{{ update.created_at|date:"d/m/Y H:i" }}</small>
+                                    </div>
+                                {% empty %}
+                                    <p class="support-copy">Ainda sem conversa nesta solicitacao.</p>
+                                {% endfor %}
+                            </div>
+
+                            <form method="post" action="{% url 'infra-request-update' item.pk %}" class="inline-form">
+                                {% csrf_token %}
+                                {{ card.update_form.body }}
+                                <button type="submit" class="secondary-button">Enviar</button>
+                            </form>
+
+                            {% if card.can_manage %}
+                                <details class="management-editor">
+                                    <summary>Gerenciar atendimento</summary>
+                                    <form method="post" action="{% url 'infra-request-manage' item.pk %}" class="stack-form">
+                                        {% csrf_token %}
+                                        {{ card.manage_form.as_p }}
+                                        <button type="submit" class="primary-button">Atualizar solicitacao</button>
+                                    </form>
+                                </details>
+                            {% endif %}
+                        </div>
+                    {% endwith %}
+                {% empty %}
+                    <p>Nenhuma solicitacao de infra encontrada para seu perfil.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section id="infra-tab-new" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Solicitar reparo ou apoio</span>
+            <h2>Nova demanda de infra</h2>
+            <form method="post" action="{% url 'infra-request-create' %}" class="stack-form">
+                {% csrf_token %}
+                {{ request_form.as_p }}
+                <button type="submit" class="primary-button">Enviar para infra</button>
+            </form>
+        </section>
+
+        <section id="infra-tab-calendar" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Calendario comum</span>
+            <h2>Agenda dos setores</h2>
+            <div class="infra-nested-tabs" data-tabs>
+                <div class="infra-tab-list infra-subtab-list" role="tablist" aria-label="Calendario da infra">
+                    <button type="button" class="infra-tab-button is-active" data-tab-target="infra-calendar-list" role="tab" aria-selected="true" aria-controls="infra-calendar-list">
+                        Agenda integrada
+                    </button>
+                    {% if is_infra_operator %}
+                        <button type="button" class="infra-tab-button" data-tab-target="infra-calendar-new" role="tab" aria-selected="false" aria-controls="infra-calendar-new">
+                            Agendar atividade de setor
+                        </button>
+                    {% endif %}
+                </div>
+
+                <section id="infra-calendar-list" class="infra-tab-panel is-active" role="tabpanel">
+                    <div class="table-stack">
+                        {% for event in calendar_events %}
+                            <div class="table-row">
+                                <strong>{{ event.title }}</strong>
+                                <span>{{ event.get_sector_display }}</span>
+                                <span>{{ event.start_at|date:"d/m/Y H:i" }}</span>
+                                <span>{{ event.responsible.display_name|default:"sem responsavel" }}</span>
+                                <span class="status-pill {% if event.status == 'cancelado' %}status-inactive{% elif event.status == 'concluido' %}status-active{% else %}status-warning{% endif %}">
+                                    {{ event.get_status_display }}
+                                </span>
+                            </div>
+                        {% empty %}
+                            <p>Nenhuma atividade de infra cadastrada para o mes.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                {% if is_infra_operator %}
+                    <section id="infra-calendar-new" class="infra-tab-panel" role="tabpanel" hidden>
+                        <form method="post" action="{% url 'infra-calendar-create' %}" class="stack-form">
+                            {% csrf_token %}
+                            {{ calendar_form.as_p }}
+                            <button type="submit" class="secondary-button">Salvar agenda</button>
+                        </form>
+                    </section>
+                {% endif %}
+            </div>
+        </section>
+
+        <section id="infra-tab-sectors" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Organizacao dos setores</span>
+            <h2>Estrutura operacional</h2>
+            <div class="infra-nested-tabs infra-sector-tabs" data-tabs>
+                <div class="infra-tab-list infra-subtab-list" role="tablist" aria-label="Setores da infra">
+                    {% for sector in sector_cards %}
+                        <button type="button" class="infra-tab-button{% if forloop.first %} is-active{% endif %}" data-tab-target="infra-sector-{{ sector.code }}" role="tab" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="infra-sector-{{ sector.code }}">
+                            {{ sector.label }}
+                        </button>
+                    {% endfor %}
+                </div>
+
+                {% for sector in sector_cards %}
+                    <section id="infra-sector-{{ sector.code }}" class="infra-tab-panel{% if forloop.first %} is-active{% endif %}" role="tabpanel" {% if not forloop.first %}hidden{% endif %}>
+                        <div class="report-card infra-sector-overview-card">
+                            <div class="directory-head">
+                                <div>
+                                    <strong>{{ sector.label }}</strong>
+                                    <span>{{ sector.description }}</span>
+                                </div>
+                                <span class="status-pill {% if sector.can_manage %}status-active{% else %}status-warning{% endif %}">
+                                    {% if sector.can_manage %}sua gestao{% else %}acompanhamento{% endif %}
+                                </span>
+                            </div>
+                            <div class="infra-sector-mini-metrics">
+                                <div class="infra-sector-mini-stat">
+                                    <strong>{{ sector.open_total }}</strong>
+                                    <span>solicitacoes abertas</span>
+                                </div>
+                                <div class="infra-sector-mini-stat">
+                                    <strong>{{ sector.scheduled_total }}</strong>
+                                    <span>agendadas</span>
+                                </div>
+                                <div class="infra-sector-mini-stat">
+                                    <strong>{{ sector.month_event_total }}</strong>
+                                    <span>no calendario</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="infra-sector-grid infra-sector-focus-grid">
+                            {% for focus in sector.focus_cards %}
+                                <div class="report-card infra-sector-card">
+                                    <span class="eyebrow">{{ focus.kicker }}</span>
+                                    <strong>{{ focus.title }}</strong>
+                                    <p>{{ focus.body }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        {% if sector.code == 'ti' %}
+                            <div class="infra-nested-tabs ti-operations-tabs" data-tabs>
+                                <div class="infra-tab-list infra-subtab-list" role="tablist" aria-label="Operacao de TI">
+                                    {% if can_manage_ti %}
+                                        <button type="button" class="infra-tab-button is-active" data-tab-target="ti-tab-computers" role="tab" aria-selected="true" aria-controls="ti-tab-computers">
+                                            Computadores
+                                        </button>
+                                        <button type="button" class="infra-tab-button" data-tab-target="ti-tab-network" role="tab" aria-selected="false" aria-controls="ti-tab-network">
+                                            Mapa de rede
+                                        </button>
+                                    {% endif %}
+                                    <button type="button" class="infra-tab-button{% if not can_manage_ti %} is-active{% endif %}" data-tab-target="ti-tab-tickets" role="tab" aria-selected="{% if can_manage_ti %}false{% else %}true{% endif %}" aria-controls="ti-tab-tickets">
+                                        Chamados TI
+                                    </button>
+                                    {% if can_manage_ti %}
+                                        <button type="button" class="infra-tab-button" data-tab-target="ti-tab-inventory" role="tab" aria-selected="false" aria-controls="ti-tab-inventory">
+                                            Inventario
+                                        </button>
+                                    {% endif %}
+                                </div>
+
+                                {% if can_manage_ti %}
+                                    <section id="ti-tab-computers" class="infra-tab-panel is-active" role="tabpanel">
+                                        <span class="eyebrow">Maquinas em uso</span>
+                                        <h3>Computadores e servidores</h3>
+                                        <div class="ti-resource-grid">
+                                            {% for computer in ti_computers %}
+                                                <div class="report-card ti-resource-card">
+                                                    <div class="directory-head">
+                                                        <div>
+                                                            <strong>{{ computer.name }}</strong>
+                                                            <span>{{ computer.get_kind_display }} - {{ computer.location }}</span>
+                                                        </div>
+                                                        <span class="status-pill {% if computer.status == 'ativo' %}status-active{% elif computer.status == 'baixado' %}status-inactive{% else %}status-warning{% endif %}">
+                                                            {{ computer.get_status_display }}
+                                                        </span>
+                                                    </div>
+                                                    <p class="support-copy">
+                                                        {% if computer.asset_code %}Patrimonio: {{ computer.asset_code }}. {% endif %}
+                                                        {% if computer.assigned_to %}Usuario: {{ computer.assigned_to.display_name }}. {% endif %}
+                                                        {% if computer.operating_system %}SO: {{ computer.operating_system }}.{% endif %}
+                                                    </p>
+                                                    <p class="support-copy">
+                                                        {% if computer.ip_address %}IP {{ computer.ip_address }}{% endif %}
+                                                        {% if computer.mac_address %}{% if computer.ip_address %} - {% endif %}MAC {{ computer.mac_address }}{% endif %}
+                                                    </p>
+                                                </div>
+                                            {% empty %}
+                                                <p class="support-copy">Nenhum computador cadastrado no inventario de TI.</p>
+                                            {% endfor %}
+                                        </div>
+                                    </section>
+
+                                    <section id="ti-tab-network" class="infra-tab-panel" role="tabpanel" hidden>
+                                        <span class="eyebrow">Mapeamento de rede</span>
+                                        <h3>Wi-Fi, links e pontos conectados</h3>
+                                        <div class="ti-network-map">
+                                            {% for node in ti_network_nodes %}
+                                                <div class="report-card ti-node-card">
+                                                    <div class="directory-head">
+                                                        <div>
+                                                            <strong>{{ node.name }}</strong>
+                                                            <span>{{ node.get_kind_display }} - {{ node.location }}</span>
+                                                        </div>
+                                                        <span class="status-pill {% if node.status == 'ativo' %}status-active{% elif node.status == 'desligado' %}status-inactive{% else %}status-warning{% endif %}">
+                                                            {{ node.get_status_display }}
+                                                        </span>
+                                                    </div>
+                                                    <p class="support-copy">
+                                                        {% if node.ip_address %}IP {{ node.ip_address }}{% endif %}
+                                                        {% if node.ssid %}{% if node.ip_address %} - {% endif %}SSID {{ node.ssid }}{% endif %}
+                                                        {% if node.vlan %} - Segmento {{ node.vlan }}{% endif %}
+                                                    </p>
+                                                    {% if node.upstream %}
+                                                        <p class="support-copy">Ligado a {{ node.upstream }}.</p>
+                                                    {% endif %}
+                                                    {% if node.notes %}
+                                                        <p>{{ node.notes }}</p>
+                                                    {% endif %}
+                                                </div>
+                                            {% empty %}
+                                                <p class="support-copy">Nenhum ponto de rede cadastrado.</p>
+                                            {% endfor %}
+                                        </div>
+                                    </section>
+                                {% endif %}
+
+                                <section id="ti-tab-tickets" class="infra-tab-panel{% if not can_manage_ti %} is-active{% endif %}" role="tabpanel" {% if can_manage_ti %}hidden{% endif %}>
+                                    <span class="eyebrow">Canal direto</span>
+                                    <h3>Abrir chamado para a TI</h3>
+                                    <div class="ti-ticket-layout">
+                                        <form method="post" action="{% url 'infra-ti-ticket-create' %}" class="stack-form">
+                                            {% csrf_token %}
+                                            {{ ti_ticket_form.as_p }}
+                                            <button type="submit" class="primary-button">Enviar chamado para TI</button>
+                                        </form>
+
+                                        <div class="report-card ti-resource-card">
+                                            <div class="directory-head">
+                                                <strong>Chamados recentes</strong>
+                                                <span>{{ ti_ticket_cards|length }} visiveis</span>
+                                            </div>
+                                            <div class="table-stack">
+                                                {% for ticket in ti_ticket_cards %}
+                                                    <div class="table-row">
+                                                        <strong>{{ ticket.title }}</strong>
+                                                        <span>{{ ticket.location }}</span>
+                                                        <span class="status-pill {% if ticket.status == 'concluida' %}status-active{% elif ticket.status == 'cancelada' %}status-inactive{% else %}status-warning{% endif %}">
+                                                            {{ ticket.get_status_display }}
+                                                        </span>
+                                                    </div>
+                                                {% empty %}
+                                                    <p class="support-copy">Nenhum chamado de TI visivel para seu perfil.</p>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {% if can_manage_ti %}
+                                    <section id="ti-tab-inventory" class="infra-tab-panel" role="tabpanel" hidden>
+                                        <span class="eyebrow">Cadastro tecnico</span>
+                                        <h3>Inventario e rede</h3>
+                                        <div class="ti-management-grid">
+                                            <div class="report-card">
+                                                <div class="directory-head">
+                                                    <strong>Novo equipamento</strong>
+                                                    <span>computador, impressora ou ativo de TI</span>
+                                                </div>
+                                                <form method="post" action="{% url 'infra-ti-inventory-create' %}" class="stack-form">
+                                                    {% csrf_token %}
+                                                    {{ ti_inventory_form.as_p }}
+                                                    <button type="submit" class="primary-button">Salvar equipamento</button>
+                                                </form>
+                                            </div>
+
+                                            <div class="report-card">
+                                                <div class="directory-head">
+                                                    <strong>Novo ponto de rede</strong>
+                                                    <span>Wi-Fi, switch, roteador ou segmento</span>
+                                                </div>
+                                                <form method="post" action="{% url 'infra-ti-network-create' %}" class="stack-form">
+                                                    {% csrf_token %}
+                                                    {{ ti_network_form.as_p }}
+                                                    <button type="submit" class="secondary-button">Salvar ponto de rede</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </section>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+
+                        <div class="infra-sector-activity-grid">
+                            <div class="report-card infra-sector-card">
+                                <div class="directory-head">
+                                    <strong>Demandas recentes</strong>
+                                    <span>{{ sector.open_total }} abertas</span>
+                                </div>
+                                <div class="table-stack">
+                                    {% for request_item in sector.visible_requests %}
+                                        <div class="table-row">
+                                            <strong>{{ request_item.title }}</strong>
+                                            <span>{{ request_item.location }}</span>
+                                            <span class="status-pill {% if request_item.status == 'concluida' %}status-active{% elif request_item.status == 'cancelada' %}status-inactive{% else %}status-warning{% endif %}">
+                                                {{ request_item.get_status_display }}
+                                            </span>
+                                        </div>
+                                    {% empty %}
+                                        <p class="support-copy">Nenhuma demanda visivel para este setor.</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="report-card infra-sector-card">
+                                <div class="directory-head">
+                                    <strong>Agenda do setor</strong>
+                                    <span>{{ sector.month_event_total }} no calendario</span>
+                                </div>
+                                <div class="table-stack">
+                                    {% for event in sector.events %}
+                                        <div class="table-row">
+                                            <strong>{{ event.title }}</strong>
+                                            <span>{{ event.start_at|date:"d/m/Y H:i" }}</span>
+                                            <span>{{ event.responsible.display_name|default:"sem responsavel" }}</span>
+                                        </div>
+                                    {% empty %}
+                                        <p class="support-copy">Nenhuma atividade agendada para este setor.</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section id="infra-tab-notifications" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Notificacoes</span>
+            <h2>Atualizacoes recentes</h2>
+            <div class="table-stack">
+                {% for notification in my_notifications %}
+                    <div class="report-card">
+                        <strong>{{ notification.request.title }}</strong>
+                        <span>{{ notification.created_at|date:"d/m/Y H:i" }}{% if notification.author %} - {{ notification.author.display_name }}{% endif %}</span>
+                        <p>{{ notification.body }}</p>
+                    </div>
+                {% empty %}
+                    <p>Nenhuma notificacao de infra no momento.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </article>
+</section>
+{% endblock %}

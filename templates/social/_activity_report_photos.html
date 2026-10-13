@@ -1,0 +1,11 @@
+{% with photos=report.photos.all %}
+    {% if photos %}
+        <div class="report-photo-grid">
+            {% for report_photo in photos %}
+                <img class="post-image report-photo" src="{{ report_photo.view_url }}" alt="Foto da atividade {{ forloop.counter }}">
+            {% endfor %}
+        </div>
+    {% elif report.photo_view_url %}
+        <img class="post-image" src="{{ report.photo_view_url }}" alt="Foto da atividade">
+    {% endif %}
+{% endwith %}

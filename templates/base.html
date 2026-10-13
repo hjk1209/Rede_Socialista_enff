@@ -1,0 +1,210 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <script src="{% static 'js/app.js' %}" defer></script>
+</head>
+<body class="theme-{% if request.user.is_authenticated %}{{ request.user.background_theme|default:'terra' }}{% else %}terra{% endif %} {% block body_class %}{% endblock %}">
+    {% if request.user.is_authenticated %}
+        <input type="checkbox" id="account-menu-toggle" class="nav-submenu-checkbox">
+    {% else %}
+        <input type="checkbox" id="public-menu-toggle" class="nav-submenu-checkbox">
+    {% endif %}
+    <header class="site-header">
+        <div class="brand-block">
+            <a class="brand-mark" href="{% url 'home' %}">{{ SITE_NAME }}</a>
+            <p class="brand-subtitle">{{ SITE_DESCRIPTION }}</p>
+        </div>
+        <nav class="site-nav">
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'feed' %}">{% if request.LANGUAGE_CODE == 'en' %}Feed{% else %}Feed{% endif %}</a>
+                <a href="{% url 'people-directory' %}">{% if request.LANGUAGE_CODE == 'en' %}People{% else %}Pessoas{% endif %}</a>
+                <a href="{% url 'community-directory' %}">{% if request.LANGUAGE_CODE == 'en' %}Communities{% else %}Comunidades{% endif %}</a>
+                {% if request.user.can_report_activities %}
+                    <a href="{% url 'activity-report-dashboard' %}">{% if request.LANGUAGE_CODE == 'en' %}Reporting{% else %}Relatoria{% endif %}</a>
+                {% endif %}
+                <a href="{% url 'inbox' %}">{% if request.LANGUAGE_CODE == 'en' %}Messages{% else %}Mensagens{% endif %}</a>
+                <a href="{% url 'health-home' %}">{% if request.LANGUAGE_CODE == 'en' %}Health{% else %}Saude{% endif %}</a>
+                {% if request.user.can_operate_warehouse %}
+                    <a href="{% url 'warehouse-dashboard' %}">{% if request.LANGUAGE_CODE == 'en' %}Warehouse{% else %}Almoxarifado{% endif %}</a>
+                {% endif %}
+                {% if request.user.can_operate_finance %}
+                    <a href="{% url 'finance-dashboard' %}">{% if request.LANGUAGE_CODE == 'en' %}Finance{% else %}Financeiro{% endif %}</a>
+                {% endif %}
+                {% if request.resolver_match.url_name != 'finance-dashboard' %}
+                    <a href="{% url 'infra-dashboard' %}">{% if request.LANGUAGE_CODE == 'en' %}Infra{% else %}Infra{% endif %}</a>
+                {% endif %}
+                <span class="nav-submenu">
+                    <label for="account-menu-toggle" class="ghost-button nav-submenu-toggle">
+                        {% if request.LANGUAGE_CODE == 'en' %}Menu{% else %}Menu{% endif %}
+                    </label>
+                </span>
+            {% else %}
+                <a href="{% url 'home' %}">{% if request.LANGUAGE_CODE == 'en' %}Home{% else %}Inicio{% endif %}</a>
+                <a href="{% url 'login' %}">{% if request.LANGUAGE_CODE == 'en' %}Login{% else %}Entrar{% endif %}</a>
+                <a class="solid-link" href="{% url 'signup' %}">{% if request.LANGUAGE_CODE == 'en' %}Create account{% else %}Criar conta{% endif %}</a>
+                <span class="nav-submenu">
+                    <label for="public-menu-toggle" class="ghost-button nav-submenu-toggle">
+                        {% if request.LANGUAGE_CODE == 'en' %}Settings{% else %}Ajustes{% endif %}
+                    </label>
+                </span>
+            {% endif %}
+            <form class="lang-switcher" action="{% url 'set_language' %}" method="post">
+                {% csrf_token %}
+                <input name="next" type="hidden" value="{{ request.get_full_path }}">
+                <select name="language" onchange="this.form.submit()">
+                    <option value="pt-br" {% if request.LANGUAGE_CODE == 'pt-br' %}selected{% endif %}>PT</option>
+                    <option value="en" {% if request.LANGUAGE_CODE == 'en' %}selected{% endif %}>EN</option>
+                </select>
+            </form>
+        </nav>
+    </header>
+
+    {% if request.user.is_authenticated %}
+        <section id="account-submenu" class="top-submenu-panel" aria-label="Menu de conta">
+            <a href="{% url 'profile' request.user.handle %}">{% if request.LANGUAGE_CODE == 'en' %}My profile{% else %}Meu perfil{% endif %}</a>
+            <a href="{% url 'profile-password-change' %}">{% if request.LANGUAGE_CODE == 'en' %}Change password{% else %}Trocar senha{% endif %}</a>
+            <a href="{% url 'security-center' %}">{% if request.user.can_moderate or request.user.is_superuser %}{% if request.LANGUAGE_CODE == 'en' %}Management{% else %}Gestao{% endif %}{% else %}{% if request.LANGUAGE_CODE == 'en' %}Protection{% else %}Protecao{% endif %}{% endif %}</a>
+            <button type="button" class="ghost-button popup-toggle" data-popup-toggle aria-pressed="false">
+                {% if request.LANGUAGE_CODE == 'en' %}Web popup{% else %}Popup web{% endif %}
+            </button>
+            <button type="button" class="ghost-button sound-toggle" data-sound-toggle aria-pressed="true">
+                {% if request.LANGUAGE_CODE == 'en' %}Sound: on{% else %}Som: ligado{% endif %}
+            </button>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="ghost-button">{% if request.LANGUAGE_CODE == 'en' %}Logout{% else %}Sair{% endif %}</button>
+            </form>
+        </section>
+    {% else %}
+        <section id="public-submenu" class="top-submenu-panel" aria-label="Ajustes">
+            <button type="button" class="ghost-button popup-toggle" data-popup-toggle aria-pressed="false">
+                {% if request.LANGUAGE_CODE == 'en' %}Web popup{% else %}Popup web{% endif %}
+            </button>
+            <button type="button" class="ghost-button sound-toggle" data-sound-toggle aria-pressed="true">
+                {% if request.LANGUAGE_CODE == 'en' %}Sound: on{% else %}Som: ligado{% endif %}
+            </button>
+        </section>
+    {% endif %}
+
+    {% if messages %}
+        <section class="flash-stack">
+            {% for message in messages %}
+                <article
+                    class="flash flash-{{ message.tags|default:'info' }}"
+                    data-notification-level="{{ message.tags|default:'info' }}"
+                >
+                    {{ message }}
+                </article>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    <main class="page-shell">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <p>{% if request.LANGUAGE_CODE == 'en' %}{{ SITE_NAME }} combines community, political articulation and a security foundation designed for real organizing environments.{% else %}{{ SITE_NAME }} combina comunidade, articulacao politica e uma base de seguranca pensada para ambiente real de organizacao.{% endif %}</p>
+    </footer>
+
+    {% if request.user.is_authenticated %}
+        {% with route=request.resolver_match.url_name %}
+            <nav class="mobile-nav-dock" aria-label="Navegacao principal mobile">
+                <a href="{% url 'feed' %}" class="{% if route == 'feed' %}is-active{% endif %}">
+                    <span>Feed</span>
+                </a>
+                <a href="{% url 'people-directory' %}" class="{% if route == 'people-directory' %}is-active{% endif %}">
+                    <span>Pessoas</span>
+                </a>
+                <a href="{% url 'inbox' %}" class="{% if route == 'inbox' %}is-active{% endif %}">
+                    <span>Mensagens</span>
+                </a>
+                {% if route == 'finance-dashboard' and request.user.can_operate_finance %}
+                    <a href="{% url 'finance-dashboard' %}" class="is-active">
+                        <span>Financeiro</span>
+                    </a>
+                {% else %}
+                    <a href="{% url 'infra-dashboard' %}" class="{% if route == 'infra-dashboard' %}is-active{% endif %}">
+                        <span>Infra</span>
+                    </a>
+                {% endif %}
+                <a href="{% url 'profile' request.user.handle %}" class="{% if route == 'profile' %}is-active{% endif %}">
+                    <span>Perfil</span>
+                </a>
+            </nav>
+        {% endwith %}
+    {% endif %}
+    <script>
+    (function () {
+        function scopedNodes(root, selector) {
+            return Array.from(root.querySelectorAll(selector)).filter(function (node) {
+                return node.closest('[data-tabs]') === root;
+            });
+        }
+
+        function openTab(root, targetId) {
+            var targetPanel = document.getElementById(targetId);
+            if (!targetPanel || targetPanel.closest('[data-tabs]') !== root) {
+                return;
+            }
+
+            scopedNodes(root, '[data-tab-target]').forEach(function (button) {
+                var isActive = button.dataset.tabTarget === targetId;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+
+            scopedNodes(root, '.infra-tab-panel, .finance-tab-panel').forEach(function (panel) {
+                var isActive = panel.id === targetId;
+                panel.classList.toggle('is-active', isActive);
+                panel.hidden = !isActive;
+            });
+        }
+
+        document.querySelectorAll('[data-tabs]').forEach(function (root) {
+            var activeButton = scopedNodes(root, '[data-tab-target]').find(function (button) {
+                return button.classList.contains('is-active');
+            }) || scopedNodes(root, '[data-tab-target]')[0];
+            if (activeButton) {
+                openTab(root, activeButton.dataset.tabTarget);
+            }
+        });
+
+        document.addEventListener('click', function (event) {
+            var tabButton = event.target.closest('[data-tab-target]');
+            if (tabButton) {
+                var root = tabButton.closest('[data-tabs]');
+                if (root) {
+                    event.preventDefault();
+                    openTab(root, tabButton.dataset.tabTarget);
+                    return;
+                }
+            }
+
+            var openMenu = document.querySelector('.nav-submenu-checkbox:checked');
+            if (!openMenu) {
+                return;
+            }
+            if (event.target.closest('.top-submenu-panel') || event.target.closest('.nav-submenu-toggle')) {
+                return;
+            }
+            openMenu.checked = false;
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') {
+                return;
+            }
+            document.querySelectorAll('.nav-submenu-checkbox:checked').forEach(function (checkbox) {
+                checkbox.checked = false;
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

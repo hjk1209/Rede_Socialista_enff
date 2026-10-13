@@ -1,0 +1,512 @@
+# Manual de Uso, Termos, Consentimentos e Mapa de Dados
+
+Versao: 2026-06-02
+
+Sistema: Rede Raizes Socialista
+
+Contato indicado para termos, consentimentos, privacidade, suporte e pedidos sobre dados:
+
+```text
+hjk1209@hotmal.com
+```
+
+> Observacao importante: este documento e uma minuta operacional para uso interno do sistema. Ele ajuda a orientar usuarios, operadores e gestores, mas nao substitui revisao juridica. Antes de publicar em ambiente de producao, revise os termos com a coordenacao responsavel e, se possivel, com assessoria juridica.
+
+## 1. Objetivo do Sistema
+
+A Rede Raizes Socialista e um sistema Django para comunicacao comunitaria e gestao operacional. Ele reune:
+
+- rede social interna;
+- feed com publicacoes, comentarios e curtidas;
+- stories;
+- comunidades e coletivos;
+- mensagens diretas;
+- relatoria de atividades;
+- modulo de saude;
+- almoxarifado e acervo;
+- setor de infraestrutura;
+- centro de protecao, auditoria e gestao de permissoes.
+
+O objetivo e organizar a comunicacao, preservar registros importantes e facilitar o acompanhamento de tarefas reais da escola, da juventude, dos coletivos e dos setores operacionais.
+
+## 2. Quem Pode Usar
+
+O sistema pode ser usado por pessoas cadastradas e autorizadas pela organizacao.
+
+Tipos principais de perfil:
+
+- Membro: usa feed, perfil, comunidades, mensagens e solicitacoes basicas.
+- Coletivo/comunidade: representa grupo, brigada, NB ou coletivo.
+- Moderador: acompanha conteudo, seguranca e reportes.
+- Administrador: gerencia usuarios, permissoes e areas sensiveis.
+- Fundador/gestao: possui acesso amplo ao sistema.
+
+Permissoes especiais:
+
+- Relatoria: pode registrar e acompanhar relatorios de atividades.
+- Saude: pode acessar fichas, agendamentos e consultas de saude.
+- Almoxarifado: pode registrar quadros, materiais, saidas, devolucoes e estoque.
+- Infra coordenacao: acompanha todos os setores de infraestrutura.
+- Infra TI: acompanha Wi-Fi, rede, computadores e maquinas.
+- Infra producao: acompanha ciclo produtivo agricola.
+- Infra jardinagem: acompanha jardins e areas verdes.
+- Infra manutencao: acompanha hidraulica, eletrica, estrutura e reparos.
+
+## 3. Acesso Inicial
+
+Enderecos comuns:
+
+```text
+Local:      http://127.0.0.1:8000/
+Rede local: http://10.0.0.169:8000/
+```
+
+Contas demo cadastradas pelo comando `bootstrap_juventude_mst`:
+
+```text
+coord.juventude
+brigada.campo
+comunica.mst
+maria.raiz
+saude.unidade
+almox.enff
+infra.coord
+ti.infra
+producao.infra
+jardim.infra
+manutencao.infra
+```
+
+Senha demo:
+
+```text
+MstJuventude!2026
+```
+
+Em uso real, troque senhas demo e remova dados de exemplo.
+
+## 4. Como Entrar
+
+1. Abra a pagina inicial.
+2. Clique em `Entrar`.
+3. Informe usuario interno, e-mail ou identificador aceito pela tela.
+4. Informe a senha.
+5. Se o perfil usa verificacao em duas etapas, informe o codigo solicitado.
+
+O sistema registra tentativas de login para seguranca. Tentativas repetidas podem gerar bloqueio temporario.
+
+## 5. Cadastro de Usuario
+
+O cadastro publico fica em:
+
+```text
+/conta/cadastro/
+```
+
+Campos principais:
+
+- nome;
+- nome de exibicao;
+- usuario interno;
+- e-mail;
+- data de nascimento, quando usada;
+- telefone, quando usado;
+- tipo de perfil;
+- senha;
+- avatar, quando enviado;
+- localidade e bio, quando preenchidas.
+
+Depois do cadastro, a gestao pode liberar permissoes especiais no centro de protecao/gestao ou pelo admin Django.
+
+## 6. Perfil e Privacidade
+
+No perfil, o usuario pode:
+
+- ver dados basicos;
+- editar apresentacao;
+- trocar avatar;
+- escolher tema visual de fundo;
+- definir se o perfil e privado;
+- acompanhar seguidores e perfis seguidos;
+- bloquear usuarios.
+
+Perfil privado:
+
+- restringe a visualizacao para seguidores autorizados;
+- nao impede que administradores ou perfis com permissao de gestao vejam registros necessarios para seguranca e operacao.
+
+Bloqueio:
+
+- reduz interacao direta;
+- ajuda a evitar contato indesejado;
+- pode ser auditado em eventos de seguranca.
+
+## 7. Feed
+
+No feed, o usuario pode:
+
+- criar postagens com texto e/ou imagem;
+- definir visibilidade;
+- liberar ou bloquear download;
+- liberar ou bloquear compartilhamento;
+- definir classificacao etaria;
+- comentar;
+- curtir;
+- filtrar por recentes, curtidas, comentadas, seguidores ou aleatorio.
+
+Tipos de visibilidade:
+
+- Publico: visivel conforme regras gerais do sistema.
+- Comunidade: voltado para circulacao comunitaria.
+- Amigos e seguidores: restrito a relacoes sociais.
+- Privado: restrito ao proprio autor e gestao autorizada.
+
+Classificacao etaria:
+
+- Livre;
+- 12;
+- 14;
+- 16;
+- 18.
+
+Conteudo 18 pode ser ocultado de menores ou de usuarios sem idade informada.
+
+## 8. Stories
+
+Stories permitem publicar momentos temporarios.
+
+O usuario pode:
+
+- criar story com texto e/ou imagem;
+- escolher estilo visual;
+- definir duracao;
+- incluir musica ou link de musica;
+- controlar quem pode ver;
+- controlar quem pode responder;
+- permitir ou nao download;
+- definir classificacao etaria.
+
+Visibilidades de story:
+
+- Publico;
+- Comunidade;
+- Seguidores;
+- Privado;
+- Lista personalizada.
+
+Respostas podem ser abertas para quem ve, seguidores, lista personalizada ou bloqueadas.
+
+## 9. Comunidades e Coletivos
+
+Perfis do tipo coletivo funcionam como comunidades.
+
+Usuarios podem:
+
+- ver comunidades;
+- solicitar entrada;
+- seguir comunidades abertas;
+- acompanhar avisos;
+- ver atividades de grupo;
+- receber relatorias vinculadas.
+
+Entrada com aprovacao:
+
+- cria uma solicitacao de participacao;
+- a comunidade ou gestao decide aprovar ou recusar;
+- quando aprovada, cria relacao de acompanhamento.
+
+## 10. Mensagens Diretas
+
+O modulo de mensagens permite conversa direta entre usuarios.
+
+Funcoes principais:
+
+- abrir conversa direta;
+- enviar mensagens;
+- ver historico;
+- reportar mensagem para moderacao;
+- acompanhar participantes da conversa.
+
+As mensagens nao devem ser usadas para envio de dados que nao tenham relacao com a finalidade da organizacao.
+
+## 11. Relatoria
+
+A relatoria registra atividades de comunidades, NBs, brigadas ou coletivos.
+
+Campos comuns:
+
+- comunidade de destino;
+- reporter;
+- titulo;
+- data da atividade;
+- texto detalhado;
+- foto principal;
+- anexos;
+- galeria de fotos.
+
+Uso recomendado:
+
+1. Entrar no painel de relatoria.
+2. Escolher comunidade/NB.
+3. Preencher titulo, data e relato.
+4. Adicionar imagens ou arquivos quando necessario.
+5. Salvar.
+
+Relatorias podem virar publicacoes associadas ao feed, conforme regra da tela.
+
+## 12. Saude
+
+O modulo de saude e sensivel e deve ser usado apenas por operadores autorizados.
+
+Ele permite registrar:
+
+- unidade de saude;
+- ficha de saude;
+- tipo sanguineo;
+- alergias;
+- condicoes cronicas;
+- medicamentos em uso;
+- contato de emergencia;
+- notas de cuidado;
+- agendamentos;
+- consultas;
+- sintomas;
+- avaliacao;
+- procedimentos;
+- orientacoes;
+- encaminhamentos;
+- retorno.
+
+Regras de uso:
+
+- registre somente informacoes necessarias ao cuidado;
+- evite exposicao desnecessaria;
+- nao compartilhe dados de saude fora do fluxo autorizado;
+- confirme a identidade da pessoa antes de editar ficha;
+- corrija dados incorretos quando solicitado.
+
+Dados de saude podem ser considerados dados pessoais sensiveis. O acesso deve ser limitado a pessoas autorizadas.
+
+## 13. Almoxarifado e Acervo
+
+O modulo de almoxarifado controla quadros, materiais, atividades e estoque.
+
+Funcoes:
+
+- cadastrar quadro ou obra;
+- registrar foto;
+- registrar numero de inventario;
+- informar local de armazenamento;
+- registrar condicao;
+- registrar saida/emprestimo;
+- registrar entrada/devolucao;
+- acompanhar prazo de devolucao;
+- registrar atividades ligadas ao acervo;
+- acompanhar material de apoio;
+- controlar estoque e validade.
+
+Campos frequentes:
+
+- nome do item;
+- numero de inventario;
+- autor;
+- local;
+- pessoa que retirou;
+- telefone;
+- turma ou grupo;
+- responsavel CPP;
+- operador;
+- data de saida;
+- prazo de devolucao;
+- quantidade;
+- lote;
+- validade.
+
+## 14. Infraestrutura
+
+O setor de infra organiza demandas de:
+
+- TI;
+- producao agricola;
+- jardinagem;
+- manutencao.
+
+Setores:
+
+- TI: Wi-Fi, rede, suporte tecnico, computadores e maquinas.
+- Producao: planejamento e acompanhamento do ciclo produtivo agricola.
+- Jardinagem: cuidado de jardins, areas verdes e paisagismo.
+- Manutencao: hidraulica, eletrica, construcao, estrutura e reparos.
+
+Fluxo de uma solicitacao:
+
+1. Usuario abre uma demanda em `/infra/`.
+2. Escolhe setor, categoria, titulo, local, bem/equipamento e descricao.
+3. Operador ou coordenacao acompanha a fila.
+4. Operador responde dentro da solicitacao.
+5. Se necessario, agenda manutencao.
+6. A atividade aparece no calendario comum.
+7. Quando resolvido, a demanda e encerrada.
+
+Coordenacao de infra:
+
+- ve todos os setores;
+- acompanha fila geral;
+- controla calendario comum;
+- consegue gerenciar atividades dos demais setores.
+
+## 15. Centro de Protecao e Gestao
+
+O centro de protecao/gestao concentra:
+
+- auditoria de eventos;
+- tentativas de login;
+- usuarios;
+- permissoes especiais;
+- bloqueios;
+- reportes;
+- eventos de seguranca.
+
+Eventos registrados:
+
+- cadastro;
+- login com sucesso;
+- falha de login;
+- bloqueio temporario;
+- logout;
+- desafio 2FA;
+- alteracao de permissao;
+- usuario bloqueado/desbloqueado;
+- mensagem reportada;
+- download;
+- acesso administrativo;
+- atualizacoes de saude;
+- conteudo bloqueado.
+
+## 16. Backup, Restauracao e Operacao Local
+
+Comandos uteis:
+
+```powershell
+py -3.14 manage.py check --settings=juventude_mst.settings.local
+py -3.14 manage.py test --settings=juventude_mst.settings.test
+powershell -ExecutionPolicy Bypass -File .\backup.ps1
+powershell -ExecutionPolicy Bypass -File .\restore.ps1 -BackupDir .\backups\NOME_DO_BACKUP
+```
+
+Servidor local:
+
+```powershell
+py -3.14 manage.py runserver 127.0.0.1:8000 --settings=juventude_mst.settings.local
+```
+
+Servidor para rede local:
+
+```powershell
+py -3.14 manage.py runserver 0.0.0.0:8000 --settings=juventude_mst.settings.local
+```
+
+## 17. Onde Cada Dado Fica Salvo
+
+### 17.1 Banco de dados
+
+No ambiente local, o banco padrao e SQLite:
+
+```text
+db.sqlite3
+```
+
+Em producao, o banco depende das variaveis:
+
+```text
+RAIZ_DB_ENGINE
+RAIZ_DB_NAME
+RAIZ_DB_USER
+RAIZ_DB_PASSWORD
+RAIZ_DB_HOST
+RAIZ_DB_PORT
+```
+
+Os modelos Django viram tabelas no banco. Quando nao ha `db_table` customizado, a tabela segue o padrao `app_modelo`, por exemplo `accounts_user`, `social_post`, `infra_infrarequest`.
+
+### 17.2 Arquivos enviados
+
+Arquivos enviados ficam na pasta local:
+
+```text
+media/
+```
+
+Subpastas principais:
+
+```text
+media/avatars/ANO/MES/
+media/posts/ANO/MES/
+media/stories/ANO/MES/
+media/relatoria/fotos/ANO/MES/
+media/relatoria/arquivos/ANO/MES/
+media/almoxarifado/quadros/ANO/MES/
+```
+
+Em producao, a pasta pode ser substituida por storage externo, se o deploy configurar isso.
+
+### 17.3 Logs
+
+Logs locais ficam em:
+
+```text
+logs/raiz.log
+logs/security.log
+```
+
+Eventos tambem podem ser salvos no banco pelo modelo `core.SecurityEvent`.
+
+### 17.4 Cookies e navegador
+
+Cookies proprios do sistema:
+
+```text
+raiz_sessionid
+raiz_csrftoken
+```
+
+Preferencias e rascunhos no navegador podem usar `localStorage` ou `sessionStorage` com chaves como:
+
+```text
+redeRaizesSocialista.notificationSoundEnabled
+redeRaizesSocialista.browserPopupEnabled
+redeRaizesSocialista.storyDraft
+redeRaizesSocialista.storyDraftSubmitted
+```
+
+Esses dados ficam no navegador do usuario, nao no banco, ate que sejam enviados ou salvos pelo sistema.
+
+### 17.5 Mapa por area
+
+| Area | Dados principais | Modelo/tabela Django | Arquivo fisico |
+| --- | --- | --- | --- |
+| Cadastro e perfil | nome, usuario, email, telefone, nascimento, bio, local, tema, permissoes, privacidade | `accounts.User` / `accounts_user` | avatar em `media/avatars/` |
+| Senha | hash da senha, nunca senha pura | `accounts.User` | banco |
+| Solicitacao de senha | usuario alvo, email informado, hash da senha sugerida, status, notas | `accounts.PasswordRequest` | banco |
+| Bloqueios | quem bloqueou, quem foi bloqueado, motivo, data | `accounts.UserBlock` | banco |
+| 2FA | hash do codigo, canal, destino, validade, tentativas | `accounts.TwoFactorChallenge` | banco |
+| Refresh token API | hash do token, JTI, IP, user-agent, validade | `accounts.ApiRefreshToken` | banco |
+| Feed | autor, texto, visibilidade, download, compartilhamento, classificacao etaria | `social.Post` | imagem em `media/posts/` |
+| Comentarios | post, autor, texto, data | `social.Comment` | banco |
+| Curtidas | post, usuario, data | `social.PostLike` | banco |
+| Seguidores | seguidor, seguido, data | `social.Follow` | banco |
+| Stories | autor, legenda, visibilidade, estilo, musica, duracao, idade minima | `social.Story` | midia em `media/stories/` |
+| Visualizacoes de story | story, visualizador, data | `social.StoryView` | banco |
+| Reacoes de story | story, usuario, emoji | `social.StoryReaction` | banco |
+| Respostas de story | story, autor, texto | `social.StoryReply` | banco |
+| Comunidades | pedidos de entrada e decisoes | `social.CommunityJoinRequest` | banco |
+| Avisos | comunidade, autor, titulo, texto, fixado | `social.CommunityNotice` | banco |
+| Atividades de grupo | comunidade, titulo, data, local, descricao | `social.GroupActivity` | banco |
+| Tarefas semanais | responsavel, titulo, prazo, status | `social.WeeklyTask` | banco |
+| Relatoria | reporter, comunidade, titulo, data, texto, post vinculado | `social.ActivityReport` | foto/anexo em `media/relatoria/` |
+| Galeria de relatoria | fotos adicionais e ordem | `social.ActivityReportPhoto` | `media/relatoria/fotos/` |
+| Mensagens | conversa, autor, texto, edicao, data | `messaging.Message` | banco |
+| Participantes | conversa, usuario, entrada | `messaging.ConversationParticipant` | banco |
+| Reporte de mensagem | mensagem, denunciante, motivo, status | `messaging.MessageReport` | banco |
+| Saude - unidade | nome, local, telefone, descricao, operador lider | `health.HealthUnit` | banco |
+| Saude - ficha | tipo sanguineo, alergias, condicoes, medicamentos, contato, notas | `health.HealthRecord` | banco |

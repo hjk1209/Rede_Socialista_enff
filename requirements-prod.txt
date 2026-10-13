@@ -1,0 +1,18 @@
+# Producao limpa: parte da base minima local.
+-r requirements.txt
+
+# Banco PostgreSQL
+psycopg2-binary>=2.9.11,<3.0
+
+# Cache, sessoes e filas Redis
+django-redis>=6.0,<7.0
+redis>=6.0,<7.0
+
+# WebSocket/tempo real opcional via RAIZ_ENABLE_REALTIME=True
+channels>=4.2,<5.0
+channels-redis>=4.2,<5.0
+daphne>=4.1,<5.0
+
+# Servidor e arquivos estaticos
+gunicorn>=23.0,<24.0
+whitenoise>=6.9,<7.0

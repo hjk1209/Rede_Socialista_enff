@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Financeiro | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<section class="panel-grid finance-dashboard">
+    <article class="surface-card finance-summary-card">
+        <span class="eyebrow">Financeiro</span>
+        <h1>Gestao financeira do movimento</h1>
+        <p class="support-copy">Orcamento, entradas, gastos, comprovantes, aprovacoes e prestacao de contas no mesmo painel.</p>
+        <div class="stat-grid">
+            <div class="metric-card">
+                <strong>R$ {{ cash_total|floatformat:2 }}</strong>
+                <span>saldo estimado</span>
+            </div>
+            <div class="metric-card">
+                <strong>R$ {{ income_month_total|floatformat:2 }}</strong>
+                <span>entradas no mes</span>
+            </div>
+            <div class="metric-card">
+                <strong>R$ {{ paid_month_total|floatformat:2 }}</strong>
+                <span>pagos no mes</span>
+            </div>
+            <div class="metric-card">
+                <strong>R$ {{ pending_expense_total|floatformat:2 }}</strong>
+                <span>em analise</span>
+            </div>
+        </div>
+        <a class="secondary-button" href="{% url 'finance-export-csv' %}">Exportar prestacao de contas</a>
+    </article>
+
+    <article class="surface-card wide-card finance-workbench finance-tab-shell" data-tabs data-finance-tabs>
+        <div class="infra-tab-list finance-tab-list" role="tablist" aria-label="Areas do financeiro">
+            <button type="button" class="infra-tab-button finance-tab-button is-active" data-tab-target="finance-tab-overview" role="tab" aria-selected="true" aria-controls="finance-tab-overview">
+                Visao geral
+            </button>
+            <button type="button" class="infra-tab-button finance-tab-button" data-tab-target="finance-tab-budgets" role="tab" aria-selected="false" aria-controls="finance-tab-budgets">
+                Orcamentos
+            </button>
+            <button type="button" class="infra-tab-button finance-tab-button" data-tab-target="finance-tab-expenses" role="tab" aria-selected="false" aria-controls="finance-tab-expenses">
+                Gastos
+            </button>
+            <button type="button" class="infra-tab-button finance-tab-button" data-tab-target="finance-tab-income" role="tab" aria-selected="false" aria-controls="finance-tab-income">
+                Entradas
+            </button>
+            <button type="button" class="infra-tab-button finance-tab-button" data-tab-target="finance-tab-accounts" role="tab" aria-selected="false" aria-controls="finance-tab-accounts">
+                Contas
+            </button>
+            <button type="button" class="infra-tab-button finance-tab-button" data-tab-target="finance-tab-accountability" role="tab" aria-selected="false" aria-controls="finance-tab-accountability">
+                Prestacao
+            </button>
+        </div>
+
+        <section id="finance-tab-overview" class="finance-tab-panel is-active" role="tabpanel">
+            <span class="eyebrow">Kit financeiro</span>
+            <h2>Fluxo de trabalho</h2>
+            <div class="finance-card-grid finance-focus-grid">
+                <div class="report-card finance-record-card">
+                    <span class="eyebrow">Planejar</span>
+                    <strong>Orcamento por ciclo</strong>
+                    <p>Crie o plano de gasto por periodo, projeto, jornada ou setor antes da execucao.</p>
+                </div>
+                <div class="report-card finance-record-card">
+                    <span class="eyebrow">Aprovar</span>
+                    <strong>Parecer registrado</strong>
+                    <p>Envie para aprovacao, registre decisao e deixe justificativa para auditoria interna.</p>
+                </div>
+                <div class="report-card finance-record-card">
+                    <span class="eyebrow">Executar</span>
+                    <strong>Gasto com comprovante</strong>
+                    <p>Solicite despesa, anexe recibo quando houver e marque pagamento somente depois da execucao.</p>
+                </div>
+                <div class="report-card finance-record-card">
+                    <span class="eyebrow">Prestar contas</span>
+                    <strong>CSV consolidado</strong>
+                    <p>Exporte entradas e saidas para fechar reuniao, projeto, jornada ou periodo financeiro.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="finance-tab-budgets" class="finance-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Orcamentos</span>
+            <h2>Planejamento e aprovacao</h2>
+            <div class="finance-tab-columns">
+                <section class="finance-panel">
+                    <form method="post" action="{% url 'finance-budget-create' %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ budget_form.as_p }}
+                        <button type="submit" class="primary-button">Criar orcamento</button>
+                    </form>
+
+                    <details class="management-editor">
+                        <summary>Adicionar linha ao orcamento</summary>
+                        <form method="post" action="{% url 'finance-budget-line-create' %}" class="stack-form">
+                            {% csrf_token %}
+                            {{ budget_line_form.as_p }}
+                            <button type="submit" class="secondary-button">Salvar linha</button>
+                        </form>
+                    </details>
+                </section>
+
+                <section class="finance-panel">
+                    <div class="finance-card-grid">
+                        {% for card in budgets %}
+                            {% with budget=card.instance %}
+                                <div class="report-card finance-record-card">
+                                    <div class="directory-head">
+                                        <div>
+                                            <strong>{{ budget.title }}</strong>
+                                            <span>{{ budget.period_start|date:"d/m/Y" }} a {{ budget.period_end|date:"d/m/Y" }}</span>
+                                        </div>
+                                        <span class="status-pill {% if budget.status == 'aprovado' %}status-active{% elif budget.status == 'recusado' %}status-inactive{% else %}status-warning{% endif %}">
+                                            {{ budget.get_status_display }}
+                                        </span>
+                                    </div>
+                                    <p>{{ budget.description|default:"Sem descricao." }}</p>
+                                    <div class="finance-mini-metrics">
+                                        <span>Planejado: R$ {{ budget.total_planned|floatformat:2 }}</span>
+                                        <span>Linhas: R$ {{ card.line_total|floatformat:2 }}</span>
+                                        <span>Comprometido: R$ {{ card.spent_total|floatformat:2 }}</span>
+                                        <span>Pago: R$ {{ card.paid_total|floatformat:2 }}</span>
+                                    </div>
+                                    <div class="directory-actions">
+                                        {% if budget.status == 'rascunho' or budget.status == 'recusado' %}
+                                            <form method="post" action="{% url 'finance-budget-submit' budget.pk %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="secondary-button">Enviar para aprovacao</button>
+                                            </form>
+                                        {% endif %}
+                                        {% if budget.status == 'enviado' %}
+                                            <details class="management-editor">
+                                                <summary>Dar parecer</summary>
+                                                <form method="post" action="{% url 'finance-budget-review' budget.pk %}" class="stack-form">
+                                                    {% csrf_token %}
+                                                    {{ budget_review_form.as_p }}
+                                                    <button type="submit" class="primary-button">Registrar parecer</button>
+                                                </form>
+                                            </details>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endwith %}
+                        {% empty %}
+                            <p>Nenhum orcamento financeiro cadastrado.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section id="finance-tab-expenses" class="finance-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Gastos</span>
+            <h2>Despesas e aprovacao</h2>
+            <div class="finance-tab-columns">
+                <section class="finance-panel">
+                    <form method="post" action="{% url 'finance-expense-create' %}" enctype="multipart/form-data" class="stack-form">
+                        {% csrf_token %}
+                        {{ expense_form.as_p }}
+                        <button type="submit" class="primary-button">Enviar para analise</button>
+                    </form>
+                </section>
+
+                <section class="finance-panel">
+                    <div class="finance-card-grid">
+                        {% for expense in expenses %}
+                            <div class="report-card finance-record-card">
+                                <div class="directory-head">
+                                    <div>
+                                        <strong>{{ expense.title }}</strong>
+                                        <span>{{ expense.get_category_display }} - R$ {{ expense.amount|floatformat:2 }}</span>
+                                    </div>
+                                    <span class="status-pill {% if expense.status == 'pago' or expense.status == 'aprovado' %}status-active{% elif expense.status == 'recusado' or expense.status == 'cancelado' %}status-inactive{% else %}status-warning{% endif %}">
+                                        {{ expense.get_status_display }}
+                                    </span>
+                                </div>
+                                <p>{{ expense.justification }}</p>
+                                <p class="support-copy">
+                                    Solicitado por {% if expense.requested_by %}{{ expense.requested_by.display_name }}{% else %}sem registro{% endif %}
+                                    em {{ expense.created_at|date:"d/m/Y H:i" }}.
+                                    {% if expense.supplier %} Fornecedor: {{ expense.supplier }}.{% endif %}
+                                </p>
+                                {% if expense.receipt %}
+                                    <a class="ghost-button" href="{{ expense.receipt_view_url }}">Ver comprovante</a>
+                                {% endif %}
+                                <details class="management-editor">
+                                    <summary>Aprovar, pedir ajuste ou pagar</summary>
+                                    <form method="post" action="{% url 'finance-expense-decision' expense.pk %}" class="stack-form">
+                                        {% csrf_token %}
+                                        {{ expense_decision_form.as_p }}
+                                        <button type="submit" class="primary-button">Registrar decisao</button>
+                                    </form>
+                                </details>
+                            </div>
+                        {% empty %}
+                            <p>Nenhuma despesa registrada.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section id="finance-tab-income" class="finance-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Entradas</span>
+            <h2>Receitas e contribuicoes</h2>
+            <div class="finance-tab-columns">
+                <section class="finance-panel">
+                    <form method="post" action="{% url 'finance-contribution-create' %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ contribution_form.as_p }}
+                        <button type="submit" class="secondary-button">Registrar entrada</button>
+                    </form>
+                </section>
+
+                <section class="finance-panel">
+                    <div class="table-stack">
+                        {% for contribution in contributions %}
+                            <div class="table-row">
+                                <strong>{{ contribution.source_name }}</strong>
+                                <span>{{ contribution.get_source_type_display }}</span>
+                                <span>{{ contribution.received_at|date:"d/m/Y" }}</span>
+                                <span>R$ {{ contribution.amount|floatformat:2 }}</span>
+                            </div>
+                        {% empty %}
+                            <p>Nenhuma entrada financeira registrada.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section id="finance-tab-accounts" class="finance-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Contas</span>
+            <h2>Caixas e contas</h2>
+            <div class="finance-tab-columns">
+                <section class="finance-panel">
+                    <form method="post" action="{% url 'finance-account-create' %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ account_form.as_p }}
+                        <button type="submit" class="secondary-button">Cadastrar conta</button>
+                    </form>
+                </section>
+
+                <section class="finance-panel">
+                    <div class="table-stack">
+                        {% for account in accounts %}
+                            <div class="table-row">
+                                <strong>{{ account.instance.name }}</strong>
+                                <span>{{ account.instance.get_kind_display }}</span>
+                                <span>R$ {{ account.balance|floatformat:2 }}</span>
+                            </div>
+                        {% empty %}
+                            <p>Nenhuma conta financeira cadastrada.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section id="finance-tab-accountability" class="finance-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Prestacao de contas</span>
+            <h2>Exportacao e conferencia</h2>
+            <div class="finance-card-grid finance-focus-grid">
+                <div class="report-card finance-record-card">
+                    <span class="eyebrow">Arquivo</span>
+                    <strong>financeiro-prestacao-contas.csv</strong>
+                    <p>Reune entradas e saidas com data, categoria, valor, status, conta, responsavel e documento.</p>
+                    <a class="secondary-button" href="{% url 'finance-export-csv' %}">Exportar CSV</a>
+                </div>
+                <div class="report-card finance-record-card">
+                    <span class="eyebrow">Conferencia</span>
+                    <strong>Fechamento por ciclo</strong>
+                    <p>Compare saldo, entradas, pagamentos, despesas em analise e orcamentos aprovados antes da reuniao.</p>
+                </div>
+                <div class="report-card finance-record-card">
+                    <span class="eyebrow">Comprovantes</span>
+                    <strong>Documentos protegidos</strong>
+                    <p>Comprovantes ficam em area protegida e devem ser anexados sempre que houver nota, recibo ou PIX.</p>
+                </div>
+            </div>
+        </section>
+    </article>
+</section>
+<script>
+(function () {
+    const root = document.querySelector('[data-finance-tabs]');
+    if (!root) {
+        return;
+    }
+
+    const buttons = Array.from(root.querySelectorAll('[data-tab-target]'));
+    const panels = Array.from(root.querySelectorAll('.finance-tab-panel'));
+
+    function openFinanceTab(targetId) {
+        panels.forEach(function (panel) {
+            const isActive = panel.id === targetId;
+            panel.classList.toggle('is-active', isActive);
+            panel.hidden = !isActive;
+        });
+
+        buttons.forEach(function (button) {
+            const isActive = button.dataset.tabTarget === targetId;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            openFinanceTab(button.dataset.tabTarget);
+        });
+    });
+
+    const activeButton = buttons.find(function (button) {
+        return button.classList.contains('is-active');
+    }) || buttons[0];
+    if (activeButton) {
+        openFinanceTab(activeButton.dataset.tabTarget);
+    }
+})();
+</script>
+{% endblock %}

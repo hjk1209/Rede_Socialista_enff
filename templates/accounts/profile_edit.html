@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Editar perfil | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+    <article class="surface-card auth-card wide-card">
+        <span class="eyebrow">Meu perfil</span>
+        <h1>Ajustar informacoes</h1>
+        <p class="support-copy">Seu nome de usuario de acesso: <strong>{{ request.user.username }}</strong></p>
+        <p><a class="secondary-button" href="{% url 'profile-password-change' %}">Trocar senha</a></p>
+        {% if request.user.avatar_view_url %}
+            <img class="avatar-image large-avatar" src="{{ request.user.avatar_view_url }}" alt="{{ request.user.display_name }}">
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="stack-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="form-error-box">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% for field in form %}
+                <div class="form-field {% if field.errors %}has-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                        {% if field.field.required %}<span class="required-mark">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small class="field-help">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% if field.name == "background_theme" %}
+                        <div class="theme-choice-grid" data-theme-choice-grid>
+                            <button type="button" class="theme-choice-card theme-choice-terra" data-theme-choice="terra" aria-pressed="false">
+                                <span class="theme-choice-swatch" aria-hidden="true">
+                                    <span></span><span></span><span></span>
+                                </span>
+                                <strong>Terra</strong>
+                            </button>
+                            <button type="button" class="theme-choice-card theme-choice-mata" data-theme-choice="mata" aria-pressed="false">
+                                <span class="theme-choice-swatch" aria-hidden="true">
+                                    <span></span><span></span><span></span>
+                                </span>
+                                <strong>Mata</strong>
+                            </button>
+                            <button type="button" class="theme-choice-card theme-choice-ceu" data-theme-choice="ceu" aria-pressed="false">
+                                <span class="theme-choice-swatch" aria-hidden="true">
+                                    <span></span><span></span><span></span>
+                                </span>
+                                <strong>Ceu</strong>
+                            </button>
+                            <button type="button" class="theme-choice-card theme-choice-noite" data-theme-choice="noite" aria-pressed="false">
+                                <span class="theme-choice-swatch" aria-hidden="true">
+                                    <span></span><span></span><span></span>
+                                </span>
+                                <strong>Noite</strong>
+                            </button>
+                            <button type="button" class="theme-choice-card theme-choice-semente" data-theme-choice="semente" aria-pressed="false">
+                                <span class="theme-choice-swatch" aria-hidden="true">
+                                    <span></span><span></span><span></span>
+                                </span>
+                                <strong>Semente</strong>
+                            </button>
+                        </div>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <small class="field-error">{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="primary-button">Salvar ajustes</button>
+        </form>
+    </article>
+</section>
+{% endblock %}

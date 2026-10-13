@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Almoxarifado | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<section class="panel-grid operations-dashboard warehouse-dashboard">
+    <article class="surface-card ops-summary-card">
+        <span class="eyebrow">Almoxarifado</span>
+        <h1>Acervo, saidas e estoque</h1>
+        <p class="support-copy">Controle interno para localizacao das obras, entradas, saidas, acompanhamentos e materiais em estoque.</p>
+        <div class="stat-grid">
+            <div class="metric-card">
+                <strong>{{ artwork_total }}</strong>
+                <span>quadros no acervo</span>
+            </div>
+            <div class="metric-card">
+                <strong>{{ today_activity_total }}</strong>
+                <span>atividades hoje</span>
+            </div>
+            <div class="metric-card">
+                <strong>{{ month_followup_total }}</strong>
+                <span>acompanhamentos no mes</span>
+            </div>
+            <div class="metric-card">
+                <strong>{{ stock_attention_total }}</strong>
+                <span>materiais em atencao</span>
+            </div>
+        </div>
+        {% if overdue_movement_total %}
+            <p class="support-copy">{{ overdue_movement_total }} retirada(s) com prazo vencido.</p>
+        {% endif %}
+    </article>
+
+    <article class="surface-card wide-card ops-tab-shell" data-tabs>
+        <div class="infra-tab-list" role="tablist" aria-label="Areas do almoxarifado">
+            <button type="button" class="infra-tab-button{% if not query %} is-active{% endif %}" data-tab-target="warehouse-tab-overview" role="tab" aria-selected="{% if query %}false{% else %}true{% endif %}" aria-controls="warehouse-tab-overview">
+                Visao geral
+            </button>
+            <button type="button" class="infra-tab-button{% if query %} is-active{% endif %}" data-tab-target="warehouse-tab-artwork" role="tab" aria-selected="{% if query %}true{% else %}false{% endif %}" aria-controls="warehouse-tab-artwork">
+                Acervo
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="warehouse-tab-movements" role="tab" aria-selected="false" aria-controls="warehouse-tab-movements">
+                Movimentacoes
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="warehouse-tab-calendar" role="tab" aria-selected="false" aria-controls="warehouse-tab-calendar">
+                Calendario
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="warehouse-tab-followups" role="tab" aria-selected="false" aria-controls="warehouse-tab-followups">
+                Acompanhamentos
+            </button>
+            <button type="button" class="infra-tab-button" data-tab-target="warehouse-tab-stock" role="tab" aria-selected="false" aria-controls="warehouse-tab-stock">
+                Estoque
+            </button>
+        </div>
+
+        <section id="warehouse-tab-overview" class="infra-tab-panel{% if not query %} is-active{% endif %}" role="tabpanel" {% if query %}hidden{% endif %}>
+            <span class="eyebrow">Visao geral</span>
+            <h2>Resumo do almoxarifado</h2>
+            <div class="ops-card-grid">
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Exportar acervo</strong>
+                        <span>backup em CSV</span>
+                    </div>
+                    <p class="support-copy">A planilha baixa os dados do acervo. As fotos seguem guardadas no sistema.</p>
+                    <a class="secondary-button" href="{% url 'warehouse-csv-export' %}">Baixar CSV do acervo</a>
+                </div>
+
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Controle de prazos</strong>
+                        <span>{{ overdue_movement_total }} vencidas</span>
+                    </div>
+                    <p class="support-copy">
+                        {% if overdue_movement_total %}
+                            Ha retirada com prazo vencido. Abra a aba Movimentacoes para confirmar devolucao.
+                        {% else %}
+                            Nenhuma retirada vencida no momento.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="warehouse-tab-artwork" class="infra-tab-panel{% if query %} is-active{% endif %}" role="tabpanel" {% if not query %}hidden{% endif %}>
+            <span class="eyebrow">Acervo de fotos</span>
+            <h2>Quadros e obras</h2>
+            <div class="ops-two-column">
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Novo quadro</strong>
+                        <span>cadastro do acervo</span>
+                    </div>
+                    <form method="post" action="{% url 'warehouse-artwork-create' %}" enctype="multipart/form-data" class="stack-form">
+                        {% csrf_token %}
+                        {{ artwork_form.as_p }}
+                        <button type="submit" class="primary-button">Salvar quadro</button>
+                    </form>
+                </div>
+
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Encontrar obra</strong>
+                        <span>{{ artworks|length }} resultado(s)</span>
+                    </div>
+                    <form method="get" action="{% url 'warehouse-dashboard' %}" class="stack-form">
+                        <input type="search" name="q" value="{{ query }}" placeholder="Nome da obra, autor, ID ou local">
+                        <button type="submit" class="secondary-button">Pesquisar</button>
+                    </form>
+                    <div class="table-stack">
+                        {% for artwork in artworks %}
+                            <div class="report-card">
+                                <div class="directory-head">
+                                    <div>
+                                        <strong>{{ artwork.name }}</strong>
+                                        <span>{{ artwork.inventory_number }} - {{ artwork.author|default:"Autor nao informado" }}</span>
+                                    </div>
+                                    <span class="status-pill status-active">{{ artwork.storage_location|default:"Sem local" }}</span>
+                                </div>
+                                {% if artwork.photo_view_url %}
+                                    <img class="post-image" src="{{ artwork.photo_view_url }}" alt="Foto do quadro">
+                                {% endif %}
+                                <p>{{ artwork.notes|default:"Sem observacoes gerais." }}</p>
+                                <p class="support-copy">{{ artwork.movement_total }} movimentacoes e {{ artwork.followup_total }} acompanhamentos.</p>
+                            </div>
+                        {% empty %}
+                            <p>Nenhum quadro encontrado.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="warehouse-tab-movements" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Entrada e saida</span>
+            <h2>Movimentacoes do acervo</h2>
+            <div class="ops-two-column">
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Registrar movimentacao</strong>
+                        <span>entrada, saida ou devolucao</span>
+                    </div>
+                    <form method="post" action="{% url 'warehouse-movement-create' %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ movement_form.as_p }}
+                        <button type="submit" class="primary-button">Registrar quadro</button>
+                    </form>
+                </div>
+
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Quadros retirados</strong>
+                        <span>{{ open_movements|length }} em aberto</span>
+                    </div>
+                    <div class="table-stack">
+                        {% for movement in open_movements %}
+                            <div class="report-card">
+                                <div class="directory-head">
+                                    <div>
+                                        <strong>{{ movement.artwork.name }}</strong>
+                                        <span>{{ movement.taken_by }} - {{ movement.phone_number|default:"sem telefone" }}</span>
+                                    </div>
+                                    <span class="status-pill {% if movement.is_overdue %}status-inactive{% else %}status-warning{% endif %}">
+                                        prazo {{ movement.due_date|date:"d/m/Y" }}
+                                    </span>
+                                </div>
+                                <p>{{ movement.notes|default:"Sem observacoes da retirada." }}</p>
+                                <div class="directory-actions">
+                                    <form method="post" action="{% url 'warehouse-movement-return' movement.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="secondary-button">Confirmar devolucao</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <p>Nenhum quadro com retirada em aberto.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="warehouse-tab-calendar" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Calendario</span>
+            <h2>Atividades do acervo</h2>
+            <div class="ops-two-column">
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Nova atividade</strong>
+                        <span>agenda do almoxarifado</span>
+                    </div>
+                    <form method="post" action="{% url 'warehouse-activity-create' %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ activity_form.as_p }}
+                        <button type="submit" class="secondary-button">Salvar atividade</button>
+                    </form>
+                </div>
+
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Atividades recentes</strong>
+                        <span>{{ activities|length }} item(ns)</span>
+                    </div>
+                    <div class="table-stack">
+                        {% for activity in activities %}
+                            <div class="table-row">
+                                <strong>{{ activity.artwork.name }}</strong>
+                                <span>{{ activity.activity_date|date:"d/m/Y" }} {{ activity.activity_time|time:"H:i" }}</span>
+                                <span>{{ activity.get_activity_type_display }}</span>
+                                <span>{{ activity.get_status_display }}</span>
+                            </div>
+                        {% empty %}
+                            <p>Nenhuma atividade cadastrada.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="warehouse-tab-followups" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Acompanhamentos</span>
+            <h2>Registro de acompanhamento</h2>
+            <div class="ops-two-column">
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Novo acompanhamento</strong>
+                        <span>registro de cuidado</span>
+                    </div>
+                    <form method="post" action="{% url 'warehouse-followup-create' %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ followup_form.as_p }}
+                        <button type="submit" class="primary-button">Salvar acompanhamento</button>
+                    </form>
+                </div>
+
+                <div class="ops-panel">
+                    <div class="directory-head">
+                        <strong>Acompanhamentos recentes</strong>
+                        <span>{{ followups|length }} item(ns)</span>
+                    </div>
+                    <div class="table-stack">
+                        {% for followup in followups %}
+                            <div class="report-card">
+                                <strong>{{ followup.artwork.name }} - {{ followup.followup_date|date:"d/m/Y" }}</strong>
+                                <span>{{ followup.responsible }} - {{ followup.get_status_display }}</span>
+                                <p>{{ followup.action_taken|default:followup.reason|default:"Sem descricao adicional." }}</p>
+                                <p class="support-copy">{{ followup.destination|default:"Sem encaminhamento." }}</p>
+                            </div>
+                        {% empty %}
+                            <p>Nenhum acompanhamento registrado.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="warehouse-tab-stock" class="infra-tab-panel" role="tabpanel" hidden>
+            <span class="eyebrow">Materiais e estoque</span>
+            <h2>Controle de materiais</h2>
+            <div class="ops-two-column">
+                <div class="report-card">
+                    <div class="directory-head">
+                        <strong>Cadastrar item</strong>
+                        <span>entrada ou atualizacao</span>
+                    </div>
+                    <form method="post" action="{% url 'warehouse-stock-create' %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ stock_form.as_p }}
+                        <button type="submit" class="secondary-button">Salvar item</button>
+                    </form>
+                </div>
+
+                <div class="report-card">
+                    <div class="directory-head">
+                        <strong>Itens em estoque</strong>
+                        <span>{{ stock_items|length }} item(ns)</span>
+                    </div>
+                    <div class="table-stack">
+                        {% for item in stock_items %}
+                            <div class="table-row">
+                                <strong>{{ item.material }}</strong>
+                                <span>{{ item.batch }}</span>
+                                <span>{{ item.quantity }} {{ item.get_unit_display }}</span>
+                                <span class="status-pill {% if item.needs_attention or item.expires_soon %}status-warning{% else %}status-active{% endif %}">
+                                    {% if item.needs_attention %}repor{% elif item.expires_soon %}validade{% else %}ok{% endif %}
+                                </span>
+                            </div>
+                        {% empty %}
+                            <p>Nenhum item em estoque.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+    </article>
+</section>
+{% endblock %}

@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Feed | {{ SITE_NAME }}{% endblock %}
+{% block body_class %}feed-page{% endblock %}
+
+{% block content %}
+<section class="feed-layout">
+    <aside class="sidebar-column">
+        <article class="surface-card feed-profile-card">
+            <a class="feed-profile-link" href="{% url 'profile' request.user.handle %}">
+                {% if request.user.avatar_view_url %}
+                    <img class="feed-avatar feed-avatar-large" src="{{ request.user.avatar_view_url }}" alt="{{ request.user.display_name }}">
+                {% else %}
+                    <span class="feed-avatar feed-avatar-large feed-avatar-fallback">{{ request.user.display_name|slice:":1"|upper }}</span>
+                {% endif %}
+                <span>
+                    <strong>{{ request.user.display_name }}</strong>
+                    <small>@{{ request.user.handle }}</small>
+                </span>
+            </a>
+        </article>
+
+        <article class="surface-card">
+            <span class="eyebrow">Pesquisa de usuarios</span>
+            <h2>Buscar pessoas</h2>
+            <form method="get" action="{% url 'people-directory' %}" class="stack-form">
+                <input type="search" name="q" value="{{ quick_query }}" placeholder="Nome, perfil, usuario ou local">
+                <button type="submit" class="secondary-button">Pesquisar</button>
+            </form>
+        </article>
+
+        <article class="surface-card">
+            <span class="eyebrow">Rede em volta</span>
+            <h2>Sugestoes de perfis</h2>
+            {% for person in suggested_users %}
+                <div class="suggestion-row">
+                    <div>
+                        <strong>{{ person.display_name }}</strong>
+                        <p>@{{ person.handle }}</p>
+                    </div>
+                    <form method="post" action="{% url 'follow-toggle' person.handle %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="ghost-button">Seguir</button>
+                    </form>
+                </div>
+            {% empty %}
+                <p>Voce ja acompanha todo mundo visivel por agora.</p>
+            {% endfor %}
+        </article>
+    </aside>
+
+    <section class="feed-column">
+        <article class="surface-card feed-composer-card">
+            <div class="feed-section-head">
+                <div>
+                    <span class="eyebrow">Publicar</span>
+                    <h2>Nova postagem</h2>
+                </div>
+                <span class="support-copy">Texto, imagem e visibilidade em um lugar so.</span>
+            </div>
+            <form method="post" action="{% url 'post-create' %}" enctype="multipart/form-data" class="feed-composer-form">
+                {% csrf_token %}
+                <div class="field-shell composer-caption-field">
+                    <label for="{{ post_form.caption.id_for_label }}">{{ post_form.caption.label }}</label>
+                    {{ post_form.caption }}
+                </div>
+                <div class="composer-grid">
+                    <div class="field-shell">
+                        <label for="{{ post_form.media.id_for_label }}">{{ post_form.media.label }}</label>
+                        {{ post_form.media }}
+                    </div>
+                    <div class="field-shell">
+                        <label for="{{ post_form.visibility.id_for_label }}">{{ post_form.visibility.label }}</label>
+                        {{ post_form.visibility }}
+                    </div>
+                    <div class="field-shell">
+                        <label for="{{ post_form.age_rating.id_for_label }}">{{ post_form.age_rating.label }}</label>
+                        {{ post_form.age_rating }}
+                    </div>
+                </div>
+                <div class="composer-toggle-row">
+                    <label class="check-card" for="{{ post_form.allow_download.id_for_label }}">
+                        {{ post_form.allow_download }}
+                        <span>{{ post_form.allow_download.label }}</span>
+                    </label>
+                    <label class="check-card" for="{{ post_form.allow_sharing.id_for_label }}">
+                        {{ post_form.allow_sharing }}
+                        <span>{{ post_form.allow_sharing.label }}</span>
+                    </label>
+                </div>
+                <div class="composer-actions">
+                    <button type="submit" class="primary-button">Publicar</button>
+                </div>
+            </form>
+        </article>
+
+        <article class="surface-card story-strip-card">
+            <div class="feed-section-head">
+                <div>
+                    <span class="eyebrow">Stories</span>
+                    <h2>Momentos ativos</h2>
+                </div>
+                <div class="directory-actions story-top-actions">
+                    <span class="stat-chip">{{ story_total }} ativos</span>
+                    <a class="primary-button" href="{% url 'story-editor' %}">Criar story</a>
+                </div>
+            </div>
+
+            <div class="story-strip">
+                {% for story in stories %}
+                    <a class="story-card" href="{% url 'story-detail' story.pk %}">
+                        <div class="story-avatar-ring">
+                            {% if story.author.avatar_view_url %}
+                                <img class="story-avatar" src="{{ story.author.avatar_view_url }}" alt="{{ story.author.display_name }}">
+                            {% else %}
+                                <div class="story-avatar story-avatar-fallback">{{ story.author.display_name|slice:":1"|upper }}</div>
+                            {% endif %}
+                        </div>
+                        <strong>{{ story.author.display_name }}</strong>
+                        <span>@{{ story.author.handle }}</span>
+                        <span>{{ story.expires_at|timeuntil }} restantes</span>
+                    </a>
+                {% empty %}
+                    <div class="story-empty-card">
+                        <strong>Nenhum story ativo</strong>
+                        <p>Abra o editor para soltar o primeiro story com prazo, musica e lista de pessoas.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="surface-card feed-filter-card">
+            <div class="feed-section-head">
+                <div>
+                    <span class="eyebrow">Visualizacao do feed</span>
+                    <h2>Filtro</h2>
+                </div>
+                <span class="support-copy">Mais recentes por padrao.</span>
+            </div>
+            <div class="filter-tabs">
+                {% for key, label in feed_filter_options %}
+                    <a class="filter-tab{% if feed_filter == key %} active-filter-tab{% endif %}" href="{% url 'feed' %}?filter={{ key }}">
+                        {{ label }}
+                    </a>
+                {% endfor %}
+            </div>
+        </article>
+
+        {% for post in posts %}
+            <article class="post-card surface-card">
+                <div class="post-head">
+                    <div class="post-author-cluster">
+                        <a class="feed-avatar-link" href="{% url 'profile' post.author.handle %}">
+                            {% if post.author.avatar_view_url %}
+                                <img class="feed-avatar" src="{{ post.author.avatar_view_url }}" alt="{{ post.author.display_name }}">
+                            {% else %}
+                                <span class="feed-avatar feed-avatar-fallback">{{ post.author.display_name|slice:":1"|upper }}</span>
+                            {% endif %}
+                        </a>
+                        <a class="author-link" href="{% url 'profile' post.author.handle %}">
+                            <strong>{{ post.author.display_name }}</strong>
+                            <span>@{{ post.author.handle }}</span>
+                        </a>
+                    </div>
+                    <div class="post-head-meta">
+                        <span class="visibility-pill">{{ post.get_visibility_display }}</span>
+                        <span class="stat-chip">{{ post.get_age_rating_display }}</span>
+                        <time>{{ post.created_at|date:"d/m H:i" }}</time>
+                    </div>
+                </div>
+
+                {% if post.caption %}
+                    <p class="post-caption">{{ post.caption }}</p>
+                {% endif %}
+                {% with report=post.activity_report %}
+                    {% if post.media_view_url and not report %}
+                        <img class="post-image" src="{{ post.media_view_url }}" alt="Imagem da publicacao">
+                    {% endif %}
+                    {% if report %}
+                        <div class="report-card">
+                            <strong>Relatoria de atividade</strong>
+                            <span>{{ report.activity_date|date:"d/m/Y" }} - enviada por {{ report.reporter.display_name }}</span>
+                            {% include "social/_activity_report_photos.html" %}
+                            {% if report.attachment_download_url %}
+                                <a class="ghost-button" href="{{ report.attachment_download_url }}">Baixar arquivo da relatoria</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <div class="post-meta">
+                    <span>{{ post.likes_total }} curtidas</span>
+                    <span>{{ post.comments_total }} comentarios</span>
+                    <span>{% if post.allow_sharing %}compartilhamento liberado{% else %}sem compartilhamento{% endif %}</span>
+                    {% if post.media_download_url %}
+                        <a class="ghost-button" href="{{ post.media_download_url }}">Baixar</a>
+                    {% endif %}
+                </div>
+
+                <div class="post-actions">
+                    <form method="post" action="{% url 'post-like' post.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="ghost-button">
+                            {% if post.id in liked_post_ids %}Descurtir{% else %}Curtir{% endif %}
+                        </button>
+                    </form>
+                </div>
+
+                <section class="comment-stack">
+                    {% for comment in post.comments.all|slice:":3" %}
+                        <div class="comment-row">
+                            <strong>{{ comment.author.display_name }}</strong>
+                            <span>{{ comment.body }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="support-copy">Ainda sem comentarios.</p>
+                    {% endfor %}
+                </section>
+
+                <form method="post" action="{% url 'post-comment' post.pk %}" class="inline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <textarea name="body" rows="2" placeholder="Escreva um comentario"></textarea>
+                    <button type="submit" class="secondary-button">Comentar</button>
+                </form>
+            </article>
+        {% empty %}
+            <article class="surface-card">
+                <h2>Seu feed esta vazio</h2>
+                <p>Publique algo, solte um story ou siga perfis para ativar a conversa da rede.</p>
+            </article>
+        {% endfor %}
+    </section>
+
+    <aside class="sidebar-column">
+        <article class="surface-card">
+            <span class="eyebrow">Comunidades</span>
+            <h2>Coletivos em destaque</h2>
+            <div class="conversation-list">
+                {% for community in community_highlights %}
+                    <div class="conversation-item">
+                        <strong>{{ community.display_name }}</strong>
+                        <span>@{{ community.handle }}</span>
+                        <span>{{ community.followers_total }} seguidores</span>
+                    </div>
+                {% empty %}
+                    <p>Nenhuma comunidade em destaque por enquanto.</p>
+                {% endfor %}
+            </div>
+            <div class="stack-form">
+                <a class="secondary-button" href="{% url 'community-directory' %}">Abrir comunidades</a>
+                <a class="ghost-button" href="{% url 'community-hub' %}">
+                    Comunidade geral: {{ community_notice_total }} avisos e {{ current_month_activity_total }} atividades
+                </a>
+            </div>
+        </article>
+
+        <article class="surface-card">
+            <span class="eyebrow">Modulos proprios</span>
+            <h2>Nossa rede no modelo GoBlue</h2>
+            <div class="network-module-list">
+                <a class="network-module-link" href="{% url 'community-directory' %}">
+                    <strong>Comunidades e NBs</strong>
+                    <span>Entrada publica ou privada com aprovacao.</span>
+                </a>
+                <a class="network-module-link" href="{% url 'community-hub' %}">
+                    <strong>Comunidade geral</strong>
+                    <span>Avisos e atividades visiveis para a base.</span>
+                </a>
+                {% if request.user.can_report_activities %}
+                    <a class="network-module-link" href="{% url 'activity-report-dashboard' %}">
+                        <strong>Relatoria</strong>
+                        <span>Fotos, textos e arquivos da atividade.</span>
+                    </a>
+                {% endif %}
+                <a class="network-module-link" href="{% url 'health-home' %}">
+                    <strong>Saude popular</strong>
+                    <span>Registro e acompanhamento do cuidado.</span>
+                </a>
+                {% if request.user.can_operate_warehouse %}
+                    <a class="network-module-link" href="{% url 'warehouse-dashboard' %}">
+                        <strong>Almoxarifado</strong>
+                        <span>Entradas, retiradas e devolucoes.</span>
+                    </a>
+                {% endif %}
+                {% if request.user.can_operate_finance %}
+                    <a class="network-module-link" href="{% url 'finance-dashboard' %}">
+                        <strong>Financeiro</strong>
+                        <span>Orcamentos, gastos, aprovacao e prestacao de contas.</span>
+                    </a>
+                {% endif %}
+                <a class="network-module-link" href="{% url 'infra-dashboard' %}">
+                    <strong>Infraestrutura</strong>
+                    <span>Solicitacoes, dialogo e calendario dos setores.</span>
+                </a>
+                <a class="network-module-link" href="{% url 'security-center' %}">
+                    <strong>{% if request.user.can_moderate or request.user.is_superuser %}Gestao e protecao{% else %}Minha protecao{% endif %}</strong>
+                    <span>Seguranca, sessoes e auditoria.</span>
+                </a>
+            </div>
+        </article>
+
+        <article class="surface-card">
+            <span class="eyebrow">Seguranca ativa</span>
+            <h2>Camadas em funcionamento</h2>
+            <ul class="security-list">
+                <li>Bloqueio temporario contra repeticao de falhas no login.</li>
+                <li>Headers defensivos e pagina autenticada sem cache.</li>
+                <li>Limites por minuto para publicacoes, comentarios e mensagens.</li>
+                <li>Auditoria basica disponivel no centro de protecao.</li>
+            </ul>
+        </article>
+
+        <article class="surface-card">
+            <span class="eyebrow">Seu perfil</span>
+            <h2>{{ request.user.display_name }}</h2>
+            <p>@{{ request.user.handle }}</p>
+            <a class="secondary-button" href="{% url 'profile' request.user.handle %}">Abrir perfil</a>
+        </article>
+    </aside>
+</section>
+{% endblock %}
