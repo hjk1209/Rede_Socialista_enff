@@ -5,9 +5,24 @@
 {% block content %}
 <section class="auth-shell">
     <article class="surface-card auth-card wide-card">
-        <span class="eyebrow">Cadastro de base</span>
+    {% if signup_closed %}
+        <span class="eyebrow">Entrada por convite</span>
+        <h1>Cadastro somente por convite</h1>
+        <p>Novas contas na {{ SITE_NAME }} sao abertas por um link de convite unico, gerado pela gestao. Peca o seu convite a quem coordena a rede.</p>
+        <p class="support-copy">Ja tem acesso? <a href="{% url 'login' %}">Entrar</a>.</p>
+    {% elif invite_invalid %}
+        <span class="eyebrow">Convite</span>
+        <h1>Convite indisponivel</h1>
+        <p>Este link de convite nao vale mais: ele ja foi usado, venceu ou foi revogado. Peca um novo convite a gestao da rede.</p>
+        <p class="support-copy">Ja tem acesso? <a href="{% url 'login' %}">Entrar</a>.</p>
+    {% else %}
+        <span class="eyebrow">{% if invite %}Convite pessoal{% else %}Cadastro de base{% endif %}</span>
         <h1>Entrar para a {{ SITE_NAME }}</h1>
-        <p>Crie um perfil individual ou coletivo. Perfis de moderacao, administracao e fundacao sao liberados apenas pela equipe responsavel.</p>
+        {% if invite %}
+            <p>Voce recebeu um convite{% if invite.label %} para <strong>{{ invite.label }}</strong>{% endif %}. O perfil sera criado como <strong>{{ invite.get_role_display }}</strong>. O link vale para um unico cadastro, ate {{ invite.expires_at|date:"d/m/Y H:i" }}.</p>
+        {% else %}
+            <p>Crie um perfil individual ou coletivo. Perfis de moderacao, administracao e fundacao sao liberados apenas pela equipe responsavel.</p>
+        {% endif %}
         <p class="support-copy required-note">Campos obrigatorios: nome, nome de perfil, usuario de acesso, email e senha.</p>
         <form method="post" enctype="multipart/form-data" class="stack-form">
             {% csrf_token %}
@@ -38,6 +53,7 @@
             <button type="submit" class="primary-button">Criar conta</button>
         </form>
         <p class="support-copy">Depois do cadastro, entre usando seu nome de usuario.</p>
+    {% endif %}
     </article>
 </section>
 {% endblock %}

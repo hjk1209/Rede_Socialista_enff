@@ -68,6 +68,7 @@ services:
       RAIZ_SECURE_SSL_REDIRECT: ${RAIZ_SECURE_SSL_REDIRECT:-False}
       RAIZ_ENABLE_REALTIME: ${RAIZ_ENABLE_REALTIME:-False}
       RAIZ_REDIS_URL: redis://redis:6379/1
+      RAIZ_SIGNUP_INVITE_ONLY: ${RAIZ_SIGNUP_INVITE_ONLY:-True}
     volumes:
       - .:/app
       - static_volume:/app/staticfiles

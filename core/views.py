@@ -4,12 +4,18 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
-from accounts.forms import AdminActionReasonForm, ManagedUserCreateForm, ManagedUserUpdateForm
-from accounts.models import PasswordRequest, User
+from accounts.forms import (
+    AdminActionReasonForm,
+    ManagedUserCreateForm,
+    ManagedUserUpdateForm,
+    SignupInviteCreateForm,
+)
+from accounts.models import PasswordRequest, SignupInvite, User
 from messaging.models import Conversation, Message, MessageReport
 from finance.models import FinanceExpense
 from social.models import ActivityReport, ActivityReportPhoto, Post, Story
@@ -252,7 +258,68 @@ class SecurityCenterView(LoginRequiredMixin, TemplateView):
             ]
             context['active_user_total'] = User.objects.filter(is_active=True).count()
             context['inactive_user_total'] = User.objects.filter(is_active=False).count()
+            context['invite_create_form'] = SignupInviteCreateForm()
+            context['signup_invites'] = SignupInvite.objects.select_related('created_by', 'used_by')[:20]
+            # O link completo so existe na sessao de quem criou, logo apos a criacao.
+            context['new_invite_url'] = self.request.session.pop('new_signup_invite_url', '')
         return context
+
+
+class SecurityInviteCreateView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        if not can_manage_users(request.user):
+            messages.error(request, 'Apenas administradores autorizados podem criar convites.')
+            return redirect('security-center')
+        if not request.user.has_recent_strong_auth():
+            messages.error(request, 'Reforce a autenticacao entrando novamente antes de criar convites.')
+            return redirect('security-center')
+
+        form = SignupInviteCreateForm(request.POST)
+        if not form.is_valid():
+            for field_errors in form.errors.values():
+                for error in field_errors:
+                    messages.error(request, error)
+            return redirect('security-center')
+
+        invite, raw_token = SignupInvite.issue(
+            created_by=request.user,
+            label=form.cleaned_data['label'],
+            role=form.cleaned_data['role'],
+            valid_days=form.cleaned_data['valid_days'],
+        )
+        record_security_event(
+            request,
+            SecurityEvent.EventType.INVITE_CREATED,
+            user=request.user,
+            details={'invite_id': invite.pk, 'label': invite.label, 'role': invite.role},
+        )
+        request.session['new_signup_invite_url'] = request.build_absolute_uri(
+            reverse('signup-invite', kwargs={'token': raw_token})
+        )
+        messages.success(request, f'Convite para {invite.label} criado. Copie o link agora: ele nao sera mostrado de novo.')
+        return redirect(f"{reverse('security-center')}#convites")
+
+
+class SecurityInviteRevokeView(LoginRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        if not can_manage_users(request.user):
+            messages.error(request, 'Apenas administradores autorizados podem revogar convites.')
+            return redirect('security-center')
+
+        invite = get_object_or_404(SignupInvite, pk=pk)
+        if not invite.is_usable():
+            messages.info(request, 'Esse convite ja nao estava disponivel.')
+            return redirect(f"{reverse('security-center')}#convites")
+
+        invite.revoke()
+        record_security_event(
+            request,
+            SecurityEvent.EventType.INVITE_REVOKED,
+            user=request.user,
+            details={'invite_id': invite.pk, 'label': invite.label},
+        )
+        messages.success(request, f'Convite para {invite.label or "sem nome"} revogado.')
+        return redirect(f"{reverse('security-center')}#convites")
 
 
 class SecurityUserStatusToggleView(LoginRequiredMixin, View):

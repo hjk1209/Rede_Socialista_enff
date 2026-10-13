@@ -2,7 +2,7 @@ from django.contrib.auth.hashers import make_password
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import PasswordRequest, User
+from accounts.models import PasswordRequest, SignupInvite, User
 
 
 class HomeTests(TestCase):
@@ -200,3 +200,74 @@ class SecurityCenterTests(TestCase):
             {'username': target_user.username, 'password': 'NovaSenhaSegura!2026'},
         )
         self.assertRedirects(login_response, reverse('feed'))
+
+
+class SecurityInviteTests(TestCase):
+    password = 'SenhaSegura!2026'
+
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            username='admin',
+            display_name='Administrador da Rede',
+            handle='admin_rede',
+            email='admin@example.com',
+            role=User.Role.ADMIN,
+            password=self.password,
+        )
+        self.member_user = User.objects.create_user(
+            username='militante',
+            display_name='Militante',
+            handle='militante',
+            email='militante@example.com',
+            role=User.Role.MEMBER,
+            password=self.password,
+        )
+
+    def _session_login(self, user):
+        return self.client.post(reverse('login'), {'username': user.username, 'password': self.password})
+
+    def test_admin_creates_invite_and_sees_link_once(self):
+        self._session_login(self.admin_user)
+        response = self.client.post(
+            reverse('security-invite-create'),
+            {'label': 'Joana', 'role': User.Role.MEMBER, 'valid_days': 7},
+        )
+        self.assertRedirects(
+            response,
+            f"{reverse('security-center')}#convites",
+            fetch_redirect_response=False,
+        )
+        invite = SignupInvite.objects.get()
+        self.assertEqual(invite.created_by, self.admin_user)
+        self.assertTrue(invite.is_usable())
+
+        page = self.client.get(reverse('security-center'))
+        link = page.context['new_invite_url']
+        self.assertIn('/conta/convite/', link)
+        raw_token = link.rstrip('/').rsplit('/', 1)[-1]
+        self.assertEqual(SignupInvite.find_by_token(raw_token), invite)
+
+        page_again = self.client.get(reverse('security-center'))
+        self.assertEqual(page_again.context['new_invite_url'], '')
+
+    def test_member_cannot_create_invite(self):
+        self._session_login(self.member_user)
+        self.client.post(
+            reverse('security-invite-create'),
+            {'label': 'Intruso', 'role': User.Role.MEMBER, 'valid_days': 7},
+        )
+        self.assertFalse(SignupInvite.objects.exists())
+
+    def test_admin_can_revoke_invite(self):
+        invite, _ = SignupInvite.issue(self.admin_user, label='Joana')
+        self._session_login(self.admin_user)
+        self.client.post(reverse('security-invite-revoke', args=[invite.pk]))
+        invite.refresh_from_db()
+        self.assertEqual(invite.status, SignupInvite.Status.REVOKED)
+
+    def test_member_cannot_revoke_invite(self):
+        invite, _ = SignupInvite.issue(self.admin_user, label='Joana')
+        self._session_login(self.member_user)
+        self.client.post(reverse('security-invite-revoke', args=[invite.pk]))
+        invite.refresh_from_db()
+        self.assertTrue(invite.is_usable())

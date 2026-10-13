@@ -4,17 +4,20 @@ from django.contrib.auth.hashers import identify_hasher
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from datetime import timedelta
+
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from social.models import Follow, WeeklyTask
 from core.models import SecurityEvent
 
-from .models import PasswordRequest, User
+from .models import PasswordRequest, SignupInvite, User
 from .tokens import verify_token
 
 
+@override_settings(SIGNUP_INVITE_ONLY=False)
 class AuthFlowTests(TestCase):
     password = 'SenhaSegura!2026'
 
@@ -422,3 +425,82 @@ class AuthFlowTests(TestCase):
         response = self.client.get(reverse('profile', args=[target.handle]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Desbloquear')
+
+
+class InviteSignupTests(TestCase):
+    password = 'SenhaSegura!2026'
+
+    def setUp(self):
+        self.founder = User.objects.create_user(
+            username='fundadora',
+            display_name='Fundadora',
+            handle='fundadora',
+            email='fundadora@example.com',
+            role=User.Role.FOUNDER,
+            password=self.password,
+        )
+
+    def _signup_payload(self, username='joana'):
+        return {
+            'username': username,
+            'display_name': 'Joana da Base',
+            'handle': f'{username}_base',
+            'email': f'{username}@example.com',
+            'birth_date': '1999-04-12',
+            'phone_number': '',
+            'bio': '',
+            'location': 'ENFF',
+            'password1': self.password,
+            'password2': self.password,
+        }
+
+    def test_public_signup_is_closed_when_invite_only(self):
+        response = self.client.post(reverse('signup'), self._signup_payload())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Cadastro somente por convite')
+        self.assertFalse(User.objects.filter(username='joana').exists())
+
+    def test_invite_creates_user_with_invite_role_and_is_single_use(self):
+        invite, raw_token = SignupInvite.issue(self.founder, label='Joana', role=User.Role.COLLECTIVE)
+        url = reverse('signup-invite', kwargs={'token': raw_token})
+
+        response = self.client.post(url, self._signup_payload())
+        self.assertRedirects(response, reverse('feed'))
+        user = User.objects.get(username='joana')
+        self.assertEqual(user.role, User.Role.COLLECTIVE)
+        invite.refresh_from_db()
+        self.assertEqual(invite.used_by, user)
+        self.assertEqual(invite.status, SignupInvite.Status.USED)
+        self.assertTrue(SecurityEvent.objects.filter(event_type=SecurityEvent.EventType.INVITE_USED, user=user).exists())
+
+        self.client.logout()
+        response = self.client.post(url, self._signup_payload(username='outra'))
+        self.assertContains(response, 'Convite indisponivel')
+        self.assertFalse(User.objects.filter(username='outra').exists())
+
+    def test_invite_form_ignores_role_sent_by_visitor(self):
+        _, raw_token = SignupInvite.issue(self.founder, label='Joana')
+        payload = self._signup_payload()
+        payload['role'] = User.Role.ADMIN
+        self.client.post(reverse('signup-invite', kwargs={'token': raw_token}), payload)
+        self.assertEqual(User.objects.get(username='joana').role, User.Role.MEMBER)
+
+    def test_expired_revoked_and_unknown_invites_are_rejected(self):
+        expired, expired_token = SignupInvite.issue(self.founder, label='Vencido')
+        expired.expires_at = timezone.now() - timedelta(minutes=1)
+        expired.save(update_fields=['expires_at'])
+        revoked, revoked_token = SignupInvite.issue(self.founder, label='Revogado')
+        revoked.revoke()
+
+        for token in (expired_token, revoked_token, 'token-que-nao-existe'):
+            response = self.client.get(reverse('signup-invite', kwargs={'token': token}))
+            self.assertContains(response, 'Convite indisponivel')
+
+    def test_only_hash_of_invite_token_is_stored(self):
+        invite, raw_token = SignupInvite.issue(self.founder, label='Hash')
+        self.assertNotEqual(invite.token_hash, raw_token)
+        self.assertEqual(SignupInvite.find_by_token(raw_token), invite)
+
+    def test_invite_cannot_grant_privileged_role(self):
+        with self.assertRaises(ValueError):
+            SignupInvite.issue(self.founder, label='Gestor', role=User.Role.ADMIN)

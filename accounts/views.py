@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -20,6 +21,7 @@ from social.models import CommunityJoinRequest, Follow, WeeklyTask
 from social.services import has_pending_community_request, is_following, ordered_posts_for, with_social_totals
 
 from .forms import (
+    InviteSignUpForm,
     LoginForm,
     PasswordRequestForm,
     ProfileForm,
@@ -27,7 +29,7 @@ from .forms import (
     TwoFactorVerificationForm,
     UserPasswordChangeForm,
 )
-from .models import ApiRefreshToken, PasswordRequest, TwoFactorChallenge, User, UserBlock
+from .models import ApiRefreshToken, PasswordRequest, SignupInvite, TwoFactorChallenge, User, UserBlock
 from .services import deliver_two_factor_code, get_user_for_username
 from .tokens import build_access_token, build_refresh_token, verify_token
 
@@ -133,9 +135,14 @@ class SignUpView(FormView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             return redirect(_default_success_url(request.user))
+        if self.signup_is_closed():
+            return self.render_to_response({'signup_closed': True})
         return super().dispatch(request, *args, **kwargs)
 
-    def form_valid(self, form):
+    def signup_is_closed(self):
+        return settings.SIGNUP_INVITE_ONLY
+
+    def signup_is_throttled(self):
         limited, _ = throttle_request(self.request, 'signup-create', settings.SIGNUP_RATE_LIMIT_PER_HOUR, 3600)
         if limited:
             record_security_event(
@@ -145,9 +152,9 @@ class SignUpView(FormView):
                 details={'scope': 'signup-create'},
             )
             messages.error(self.request, 'Cadastro temporariamente limitado. Aguarde um pouco antes de tentar de novo.')
-            return self.form_invalid(form)
+        return limited
 
-        user = form.save()
+    def complete_signup(self, user):
         _issue_session_login(self.request, user)
         record_security_event(
             self.request,
@@ -157,6 +164,54 @@ class SignUpView(FormView):
         )
         messages.success(self.request, f'Perfil criado. Seu nome de usuario de acesso e {user.username}.')
         return redirect('feed')
+
+    def form_valid(self, form):
+        if self.signup_is_throttled():
+            return self.form_invalid(form)
+        return self.complete_signup(form.save())
+
+
+class InviteSignUpView(SignUpView):
+    form_class = InviteSignUpForm
+
+    def dispatch(self, request, *args, **kwargs):
+        self.invite = SignupInvite.find_by_token(kwargs['token'])
+        if self.invite is None or not self.invite.is_usable():
+            if request.user.is_authenticated:
+                return redirect(_default_success_url(request.user))
+            return self.render_to_response({'invite_invalid': True})
+        return super().dispatch(request, *args, **kwargs)
+
+    def signup_is_closed(self):
+        return False
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['invite'] = self.invite
+        return context
+
+    def form_valid(self, form):
+        if self.signup_is_throttled():
+            return self.form_invalid(form)
+
+        with transaction.atomic():
+            # Trava o convite para que dois cadastros simultaneos nao usem o mesmo link.
+            invite = SignupInvite.objects.select_for_update().get(pk=self.invite.pk)
+            if not invite.is_usable():
+                messages.error(self.request, 'Este convite acabou de ser usado ou deixou de valer.')
+                return self.render_to_response({'invite_invalid': True})
+            user = form.save(commit=False)
+            user.role = invite.role
+            user.save()
+            invite.mark_used(user)
+
+        record_security_event(
+            self.request,
+            SecurityEvent.EventType.INVITE_USED,
+            user=user,
+            details={'invite_id': invite.pk, 'created_by': getattr(invite.created_by, 'login_id', None)},
+        )
+        return self.complete_signup(user)
 
 
 class SecureLoginView(FormView):

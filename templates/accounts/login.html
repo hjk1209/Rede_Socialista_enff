@@ -36,7 +36,11 @@
             <p>Precisa redefinir a senha? <a href="{% url 'password-request' %}">Enviar solicitacao com senha sugerida</a>.</p>
             <p>Solicitacoes de senha aguardando aprovacao administrativa: {{ pending_password_request_total }}</p>
         </div>
-        <p class="support-copy">Ainda nao tem perfil? <a href="{% url 'signup' %}">Criar conta agora</a>.</p>
+        {% if SIGNUP_INVITE_ONLY %}
+            <p class="support-copy">Ainda nao tem perfil? A entrada e por convite: peca seu link unico a gestao da rede.</p>
+        {% else %}
+            <p class="support-copy">Ainda nao tem perfil? <a href="{% url 'signup' %}">Criar conta agora</a>.</p>
+        {% endif %}
     </article>
 </section>
 {% endblock %}

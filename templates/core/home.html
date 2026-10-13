@@ -16,7 +16,11 @@
                 <a class="primary-button" href="{% url 'feed' %}">Entrar no feed</a>
                 <a class="secondary-button" href="{% url 'security-center' %}">{% if request.user.can_moderate or request.user.is_superuser %}Abrir gestao{% else %}Minha protecao{% endif %}</a>
             {% else %}
-                <a class="primary-button" href="{% url 'signup' %}">Abrir conta</a>
+                {% if SIGNUP_INVITE_ONLY %}
+                    <a class="primary-button" href="{% url 'signup' %}">Entrada por convite</a>
+                {% else %}
+                    <a class="primary-button" href="{% url 'signup' %}">Abrir conta</a>
+                {% endif %}
                 <a class="secondary-button" href="{% url 'login' %}">Ja tenho acesso</a>
             {% endif %}
         </div>
