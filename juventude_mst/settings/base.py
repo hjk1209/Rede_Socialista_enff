@@ -282,22 +282,34 @@ if RAIZ_ENABLE_REALTIME:
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 4 * 1024 * 1024
 
+CACHE_BACKEND = os.environ.get(
+    'RAIZ_CACHE_BACKEND',
+    'django.core.cache.backends.locmem.LocMemCache'
+    if USE_LOCAL_STATE
+    else 'django.core.cache.backends.redis.RedisCache'
+)
+CACHE_POOL_OPTIONS = {
+    'max_connections': 50,
+    'retry_on_timeout': True,
+}
+
+# O RedisCache nativo do Django recebe as opcoes do pool direto em OPTIONS;
+# o django-redis usa CLIENT_CLASS e CONNECTION_POOL_KWARGS.
+if CACHE_BACKEND.startswith('django_redis.'):
+    CACHE_OPTIONS = {
+        'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        'CONNECTION_POOL_KWARGS': CACHE_POOL_OPTIONS,
+    }
+elif CACHE_BACKEND == 'django.core.cache.backends.redis.RedisCache':
+    CACHE_OPTIONS = CACHE_POOL_OPTIONS
+else:
+    CACHE_OPTIONS = {}
+
 CACHES = {
     'default': {
-        'BACKEND': os.environ.get(
-            'RAIZ_CACHE_BACKEND',
-            'django.core.cache.backends.locmem.LocMemCache'
-            if USE_LOCAL_STATE
-            else 'django.core.cache.backends.redis.RedisCache'
-        ),
+        'BACKEND': CACHE_BACKEND,
         'LOCATION': os.environ.get('RAIZ_CACHE_LOCATION', '' if USE_LOCAL_STATE else 'redis://127.0.0.1:6379/0'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'CONNECTION_POOL_CLASS_KWARGS': {
-                'max_connections': 50,
-                'retry_on_timeout': True,
-            }
-        } if not USE_LOCAL_STATE else {}
+        'OPTIONS': CACHE_OPTIONS,
     }
 }
 
@@ -337,6 +349,8 @@ POST_RATE_LIMIT_PER_MINUTE = int(os.environ.get('RAIZ_POST_RATE_LIMIT_PER_MINUTE
 COMMENT_RATE_LIMIT_PER_MINUTE = int(os.environ.get('RAIZ_COMMENT_RATE_LIMIT_PER_MINUTE', '25'))
 MESSAGE_RATE_LIMIT_PER_MINUTE = int(os.environ.get('RAIZ_MESSAGE_RATE_LIMIT_PER_MINUTE', '40'))
 SIGNUP_RATE_LIMIT_PER_HOUR = int(os.environ.get('RAIZ_SIGNUP_RATE_LIMIT_PER_HOUR', '10'))
+# Com convite obrigatorio, novas contas so entram por link unico gerado na gestao.
+SIGNUP_INVITE_ONLY = env_bool('RAIZ_SIGNUP_INVITE_ONLY', True)
 RECOVERY_RATE_LIMIT_PER_HOUR = int(os.environ.get('RAIZ_RECOVERY_RATE_LIMIT_PER_HOUR', '6'))
 LIKE_RATE_LIMIT_PER_MINUTE = int(os.environ.get('RAIZ_LIKE_RATE_LIMIT_PER_MINUTE', '80'))
 REPORT_RATE_LIMIT_PER_MINUTE = int(os.environ.get('RAIZ_REPORT_RATE_LIMIT_PER_MINUTE', '15'))

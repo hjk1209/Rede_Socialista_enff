@@ -6,7 +6,7 @@ from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
 from core.security import clean_plain_text
 from core.uploads import validate_safe_image_upload
 
-from .models import PasswordRequest, User
+from .models import PasswordRequest, SignupInvite, User
 
 
 def configure_account_fields(form, allow_privileged_roles=False, can_change_roles=False):
@@ -171,6 +171,52 @@ class SignUpForm(UserCreationForm):
         if commit:
             user.save()
         return user
+
+
+class InviteSignUpForm(SignUpForm):
+    """Cadastro por convite: o tipo de perfil vem do convite, nao da pessoa."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('role')
+
+
+class SignupInviteCreateForm(forms.Form):
+    VALIDITY_CHOICES = [
+        (1, '1 dia'),
+        (3, '3 dias'),
+        (7, '7 dias'),
+        (30, '30 dias'),
+    ]
+
+    label = forms.CharField(
+        label='Para quem e o convite',
+        max_length=120,
+        widget=forms.TextInput(attrs={'placeholder': 'Ex.: Joana - brigada de saude'}),
+        error_messages={'required': 'Informe para quem e o convite.'},
+    )
+    role = forms.ChoiceField(
+        label='Tipo de perfil',
+        choices=[(User.Role.MEMBER, 'Membro'), (User.Role.COLLECTIVE, 'Coletivo')],
+        initial=User.Role.MEMBER,
+        help_text='Perfis especiais continuam sendo liberados depois, pela gestao.',
+    )
+    valid_days = forms.TypedChoiceField(
+        label='Validade',
+        choices=VALIDITY_CHOICES,
+        coerce=int,
+        initial=7,
+        help_text='Depois desse prazo o link deixa de funcionar.',
+    )
+
+    def clean_label(self):
+        return clean_plain_text(self.cleaned_data['label'])
+
+    def clean_role(self):
+        role = self.cleaned_data['role']
+        if role not in SignupInvite.ALLOWED_ROLES:
+            raise forms.ValidationError('Convites so podem criar perfis de membro ou coletivo.')
+        return role
 
 
 class LoginForm(forms.Form):

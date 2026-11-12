@@ -5,6 +5,8 @@ from core.views import (
     HomeView,
     ProtectedMediaView,
     SecurityCenterView,
+    SecurityInviteCreateView,
+    SecurityInviteRevokeView,
     SecurityPasswordRequestActionView,
     SecurityUserEditView,
     SecurityUserStatusToggleView,
@@ -27,6 +29,8 @@ urlpatterns = [
         name='protected-media',
     ),
     path('seguranca/', SecurityCenterView.as_view(), name='security-center'),
+    path('seguranca/convites/', SecurityInviteCreateView.as_view(), name='security-invite-create'),
+    path('seguranca/convites/<int:pk>/revogar/', SecurityInviteRevokeView.as_view(), name='security-invite-revoke'),
     path('seguranca/usuarios/<int:pk>/editar/', SecurityUserEditView.as_view(), name='security-user-edit'),
     path('seguranca/usuarios/<int:pk>/status/', SecurityUserStatusToggleView.as_view(), name='security-user-toggle'),
     path(

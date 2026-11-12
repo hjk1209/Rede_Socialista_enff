@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import timedelta
 
@@ -266,6 +267,93 @@ class PasswordRequest(models.Model):
 
     def __str__(self):
         return f'Solicitacao de senha para {self.target_user.username}'
+
+
+def hash_invite_token(raw_token):
+    return hashlib.sha256(str(raw_token or '').encode('utf-8')).hexdigest()
+
+
+class SignupInvite(models.Model):
+    ALLOWED_ROLES = (User.Role.MEMBER, User.Role.COLLECTIVE)
+
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Disponivel'
+        USED = 'used', 'Usado'
+        EXPIRED = 'expired', 'Vencido'
+        REVOKED = 'revoked', 'Revogado'
+
+    # Guardamos apenas o hash: o link completo aparece uma unica vez para quem criou.
+    token_hash = models.CharField(max_length=64, unique=True)
+    label = models.CharField(max_length=120, blank=True)
+    role = models.CharField(max_length=20, choices=User.Role.choices, default=User.Role.MEMBER)
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_signup_invites',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    used_by = models.OneToOneField(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='signup_invite',
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Convite {self.label or self.pk} ({self.get_status_display()})'
+
+    @property
+    def status(self):
+        if self.used_at:
+            return self.Status.USED
+        if self.revoked_at:
+            return self.Status.REVOKED
+        if self.expires_at < timezone.now():
+            return self.Status.EXPIRED
+        return self.Status.ACTIVE
+
+    def get_status_display(self):
+        return self.Status(self.status).label
+
+    def is_usable(self):
+        return self.status == self.Status.ACTIVE
+
+    def mark_used(self, user):
+        self.used_by = user
+        self.used_at = timezone.now()
+        self.save(update_fields=['used_by', 'used_at'])
+
+    def revoke(self):
+        if self.is_usable():
+            self.revoked_at = timezone.now()
+            self.save(update_fields=['revoked_at'])
+
+    @classmethod
+    def issue(cls, created_by, label='', role=User.Role.MEMBER, valid_days=7):
+        if role not in cls.ALLOWED_ROLES:
+            raise ValueError('Convites so podem criar perfis de membro ou coletivo.')
+        raw_token = secrets.token_urlsafe(32)
+        invite = cls.objects.create(
+            token_hash=hash_invite_token(raw_token),
+            label=label,
+            role=role,
+            created_by=created_by,
+            expires_at=timezone.now() + timedelta(days=valid_days),
+        )
+        return invite, raw_token
+
+    @classmethod
+    def find_by_token(cls, raw_token):
+        return cls.objects.filter(token_hash=hash_invite_token(raw_token)).first()
 
 
 class UserBlock(models.Model):

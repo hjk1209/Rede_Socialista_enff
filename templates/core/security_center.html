@@ -24,6 +24,51 @@
     </article>
 
     {% if can_manage_users %}
+        <article class="surface-card" id="convites">
+            <span class="eyebrow">Entrada por convite</span>
+            <h2>Convites unicos</h2>
+            <p class="support-copy">Cada convite gera um link que vale para um unico cadastro, ate a data de validade. Envie o link direto para a pessoa.</p>
+            {% if new_invite_url %}
+                <div class="form-field">
+                    <label for="new-invite-url">Link do convite (copie agora, ele nao aparece de novo)</label>
+                    <input id="new-invite-url" type="text" readonly value="{{ new_invite_url }}">
+                </div>
+            {% endif %}
+            <form method="post" action="{% url 'security-invite-create' %}" class="stack-form">
+                {% csrf_token %}
+                {{ invite_create_form.as_p }}
+                <button type="submit" class="primary-button">Gerar convite</button>
+            </form>
+            <div class="table-stack">
+                {% for invite in signup_invites %}
+                    <div class="table-row management-row">
+                        <div class="management-meta">
+                            <strong>{{ invite.label|default:"Convite sem nome" }}</strong>
+                            <span>{{ invite.get_role_display }} - criado por {{ invite.created_by.display_name|default:"gestao" }} em {{ invite.created_at|date:"d/m/Y H:i" }}</span>
+                            {% if invite.used_by %}
+                                <span>Usado por @{{ invite.used_by.handle }} em {{ invite.used_at|date:"d/m/Y H:i" }}</span>
+                            {% else %}
+                                <span>Valido ate {{ invite.expires_at|date:"d/m/Y H:i" }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="management-actions">
+                            <span class="status-pill {% if invite.status == 'active' %}status-active{% elif invite.status == 'used' %}status-warning{% else %}status-inactive{% endif %}">
+                                {{ invite.get_status_display }}
+                            </span>
+                            {% if invite.status == 'active' %}
+                                <form method="post" action="{% url 'security-invite-revoke' invite.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="ghost-button">Revogar</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p>Nenhum convite criado ainda.</p>
+                {% endfor %}
+            </div>
+        </article>
+
         <article class="surface-card">
             <span class="eyebrow">Cadastro protegido</span>
             <h2>Adicionar usuario</h2>
