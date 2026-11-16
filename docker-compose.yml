@@ -38,6 +38,7 @@ services:
   web:
     build: .
     container_name: rede-raizes-web
+    image: bmalavenda/rede-raizes-web:0.0.1
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
@@ -64,13 +65,13 @@ services:
       RAIZ_DEFAULT_FROM_EMAIL: ${RAIZ_DEFAULT_FROM_EMAIL:-no-reply@rede-raizes-socialista.local}
       RAIZ_SECRET_KEY: ${RAIZ_SECRET_KEY:?RAIZ_SECRET_KEY precisa ser definida antes de subir em producao}
       RAIZ_ALLOWED_HOSTS: ${RAIZ_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      RAIZ_CSRF_TRUSTED_ORIGINS: ${RAIZ_CSRF_TRUSTED_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000}
+      RAIZ_CSRF_TRUSTED_ORIGINS: ${RAIZ_CSRF_TRUSTED_ORIGINS:-http://10.20.21.245:8000,http://127.0.0.1:8000,http://redesocialista.enff.lan}
       RAIZ_SECURE_SSL_REDIRECT: ${RAIZ_SECURE_SSL_REDIRECT:-False}
       RAIZ_ENABLE_REALTIME: ${RAIZ_ENABLE_REALTIME:-False}
       RAIZ_REDIS_URL: redis://redis:6379/1
       RAIZ_SIGNUP_INVITE_ONLY: ${RAIZ_SIGNUP_INVITE_ONLY:-True}
     volumes:
-      - .:/app
+      # - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     ports:
